@@ -1,0 +1,10 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "girlfriend-music",
+	"compatibility_date": "2026-10-24",
+	"assets": {
+		"directory": "./dist",
+		"html_handling": "force-trailing-slash",
+		"not_found_handling": "404-page"
+	}
+}

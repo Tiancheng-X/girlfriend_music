@@ -1,0 +1,35 @@
+---
+// 改写：首页即整站 —— 大播放器占主位，右下角悬浮胶囊照旧；两者共用 MusicManager 单例。
+import Base from "@/layouts/Base.astro";
+import BigPlayer from "@/components/BigPlayer.astro";
+import MusicPlayer from "@/components/MusicPlayer.astro";
+---
+
+<Base title="宝宝的歌单">
+	<main class="page">
+		<h1 class="page__title">宝宝的歌单</h1>
+
+		<BigPlayer />
+	</main>
+
+	<!-- 悬浮胶囊播放器（三态：disc / pill / bar，右下角可拖拽） -->
+	<MusicPlayer />
+</Base>
+
+<style>
+	.page {
+		box-sizing: border-box;
+		width: 100%;
+		max-width: 68rem;
+		margin: 0 auto;
+		padding: clamp(1.25rem, 5vw, 2.5rem) clamp(1rem, 4vw, 2rem) 8rem;
+	}
+
+	.page__title {
+		margin: 0 0 clamp(1rem, 3vw, 1.75rem);
+		font-size: clamp(1.5rem, 4vw, 2.25rem);
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-align: center;
+	}
+</style>

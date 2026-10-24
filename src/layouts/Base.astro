@@ -1,0 +1,123 @@
+---
+// 新写：暗色主题根布局。参考 my-blog:src/layouts/Layout.astro 的挂载方式，
+// 只保留音乐播放器需要的最小骨架（html/head/body + 主题变量 + 播放器样式）。
+import MusicManager from "@/components/MusicManager.astro";
+import "@/styles/music-player.css";
+
+interface Props {
+	title?: string;
+}
+
+const { title = "宝宝的歌单" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<meta name="color-scheme" content="dark" />
+		<meta name="theme-color" content="#0b1416" />
+		<title>{title}</title>
+	</head>
+	<body>
+		<slot />
+		<!-- 播放引擎单例：暴露 window.__fireflyMusic，供 MusicPlayer 控制器驱动 -->
+		<MusicManager />
+	</body>
+</html>
+
+<style is:global>
+	/* ── 主题变量 ─────────────────────────────────────────────
+	   暗色 + hue 165 青蓝系。播放器样式（music-player.css）只认这些变量，不认具体色值。 */
+	:root {
+		--hue: 165;
+		--primary: oklch(0.78 0.12 var(--hue));
+		--page-bg: oklch(0.16 0.012 var(--hue));
+		--deep-text: oklch(0.91 0.008 var(--hue));
+		--content-meta: oklch(0.68 0.012 var(--hue));
+		--float-panel-bg: oklch(0.21 0.014 var(--hue));
+		--music-surface: oklch(0.21 0.014 var(--hue));
+		--line-divider: oklch(0.29 0.014 var(--hue));
+		--btn-plain-bg-hover: oklch(0.25 0.014 var(--hue));
+		--radius-small: 0.5rem;
+
+		color-scheme: dark;
+	}
+
+	html,
+	body {
+		margin: 0;
+		padding: 0;
+		min-height: 100%;
+	}
+
+	body {
+		background: var(--page-bg);
+		color: var(--deep-text);
+		font-family:
+			system-ui,
+			-apple-system,
+			"Segoe UI",
+			"PingFang SC",
+			"Hiragino Sans GB",
+			"Microsoft YaHei",
+			sans-serif;
+		-webkit-font-smoothing: antialiased;
+	}
+
+	/* ── 工具类 ───────────────────────────────────────────────
+	   原站由 Tailwind 提供 hidden / text-* 尺寸；本项目不引入 Tailwind，
+	   这里给出播放器实际用到的等价规则（JS 里按 classList 切换 .is-hidden）。 */
+	.is-hidden {
+		display: none !important;
+	}
+
+	.mp-icon-sm {
+		font-size: 0.875rem;
+	}
+
+	.mp-icon-md {
+		font-size: 1.125rem;
+	}
+
+	.mp-icon-lg {
+		font-size: 1.25rem;
+	}
+
+	.mp-icon-xl {
+		font-size: 1.5rem;
+	}
+
+	.mp-icon-2xl {
+		font-size: 1.875rem;
+	}
+
+	/* 歌单条目高亮标题色（原站是 Tailwind 的 text-(--primary)） */
+	.music-player__track-title.is-accent {
+		color: var(--primary);
+	}
+
+	/* 原站 custom-scrollbar 全局类（滚动条细化），这里只保留播放器需要的最小子集 */
+	.custom-scrollbar {
+		scrollbar-width: thin;
+		scrollbar-color: color-mix(in srgb, var(--deep-text) 22%, transparent) transparent;
+	}
+
+	.custom-scrollbar::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	.custom-scrollbar::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.custom-scrollbar::-webkit-scrollbar-thumb {
+		background: color-mix(in srgb, var(--deep-text) 22%, transparent);
+		border-radius: 3px;
+	}
+
+	.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+		background: color-mix(in srgb, var(--deep-text) 34%, transparent);
+	}
+</style>

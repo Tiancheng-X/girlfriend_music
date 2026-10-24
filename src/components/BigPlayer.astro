@@ -1,0 +1,140 @@
+---
+// 大播放器：首页主播放区（封面 / 传输控制 / 进度 / 音量 / 歌词 / 歌单），
+// 结构在这里静态渲染，状态与交互全部交给 src/utils/big-player-controller.ts。
+import Icon from "@/components/Icon.astro";
+import { t } from "@/i18n/zh";
+import "@/styles/big-player.css";
+---
+
+<section class="big-player" data-big-player data-playing="false" role="region" aria-label={t("music")}>
+	<div class="big-player__hero">
+		<div class="big-player__cover is-empty" data-big-player-cover>
+			<img class="big-player__cover-img" alt="" width="480" height="480" />
+			<span class="big-player__cover-fallback">
+				<Icon name="material-symbols:music-note-rounded" class="big-player__cover-icon" />
+				{t("musicNoCover")}
+			</span>
+		</div>
+		<div class="big-player__meta">
+			<h2 class="big-player__title">{t("musicNoPlaying")}</h2>
+			<p class="big-player__artist"></p>
+		</div>
+	</div>
+
+	<div class="big-player__controls">
+		<div class="big-player__transport">
+			<button class="big-player__btn big-player__btn--mode" type="button" aria-label={t("playModeList")} data-big-player-mode>
+				<span class="big-player__mode-icons">
+					<Icon name="material-symbols:repeat-rounded" class="big-player__icon-mode-list" />
+					<Icon name="material-symbols:repeat-one-rounded" class="big-player__icon-mode-one is-hidden" />
+					<Icon name="material-symbols:shuffle-rounded" class="big-player__icon-mode-shuffle is-hidden" />
+				</span>
+				<span class="big-player__mode-label" data-big-player-mode-label>{t("playModeList")}</span>
+			</button>
+			<button class="big-player__btn" type="button" aria-label={t("musicPrev")} data-big-player-prev>
+				<Icon name="material-symbols:skip-previous-rounded" />
+			</button>
+			<button class="big-player__btn big-player__btn--play" type="button" aria-label={t("musicPlay")} data-big-player-play>
+				<Icon name="material-symbols:play-arrow-rounded" class="big-player__icon-play" />
+				<Icon name="material-symbols:pause-rounded" class="big-player__icon-pause is-hidden" />
+			</button>
+			<button class="big-player__btn" type="button" aria-label={t("musicNext")} data-big-player-next>
+				<Icon name="material-symbols:skip-next-rounded" />
+			</button>
+		</div>
+
+		<div class="big-player__volume">
+			<button class="big-player__btn" type="button" aria-label={t("musicVolume")} aria-pressed="false" data-big-player-mute>
+				<Icon name="material-symbols:volume-up-rounded" class="big-player__icon-vol-on" />
+				<Icon name="material-symbols:volume-off-rounded" class="big-player__icon-vol-off is-hidden" />
+			</button>
+			<div
+				class="big-player__volume-slider"
+				role="slider"
+				aria-label={t("musicVolume")}
+				aria-valuemin="0"
+				aria-valuemax="100"
+				aria-valuenow="60"
+				data-big-player-volume
+			>
+				<span class="big-player__volume-bar"></span>
+				<span class="big-player__volume-thumb"></span>
+			</div>
+		</div>
+	</div>
+
+	<div class="big-player__progress-row">
+		<span class="big-player__time" data-big-player-time-current>0:00</span>
+		<div
+			class="big-player__progress"
+			role="slider"
+			aria-label={t("musicProgress")}
+			aria-valuemin="0"
+			aria-valuemax="100"
+			aria-valuenow="0"
+			data-big-player-progress
+		>
+			<span class="big-player__progress-bar"></span>
+			<span class="big-player__progress-thumb"></span>
+		</div>
+		<span class="big-player__time big-player__time--total" data-big-player-time-total>0:00</span>
+	</div>
+
+	<p class="big-player__error is-hidden" role="status" data-big-player-error></p>
+
+	<div class="big-player__panels">
+		<section class="big-player__panel" aria-labelledby="big-player-lyrics-title">
+			<div class="big-player__panel-head">
+				<h3 class="big-player__panel-title" id="big-player-lyrics-title">{t("musicLyrics")}</h3>
+			</div>
+			<div class="big-player__lyrics-list custom-scrollbar" role="listbox" aria-label={t("musicLyrics")} data-big-player-lyrics>
+				<p class="big-player__hint">{t("musicNoLyrics")}</p>
+			</div>
+		</section>
+
+		<section class="big-player__panel" aria-labelledby="big-player-playlist-title">
+			<div class="big-player__panel-head">
+				<h3 class="big-player__panel-title" id="big-player-playlist-title">{t("musicPlaylist")}</h3>
+				<span class="big-player__count" data-big-player-count>0</span>
+			</div>
+			<div
+				class="big-player__playlist-list custom-scrollbar"
+				role="listbox"
+				aria-label={t("musicPlaylist")}
+				aria-busy="true"
+				data-big-player-playlist
+			>
+				<div class="big-player__skeleton" aria-hidden="true">
+					<span class="big-player__skeleton-row"></span>
+					<span class="big-player__skeleton-row"></span>
+					<span class="big-player__skeleton-row"></span>
+					<span class="big-player__skeleton-row"></span>
+					<span class="big-player__skeleton-row"></span>
+					<span class="big-player__skeleton-row"></span>
+				</div>
+			</div>
+		</section>
+	</div>
+
+	<!-- 歌单条目结构：控制器克隆它填 162 首（序号 + 歌名 + 歌手） -->
+	<template id="big-player-item-template">
+		<div class="big-player__item" role="option" data-big-player-item>
+			<span class="big-player__item-index"></span>
+			<span class="big-player__item-text">
+				<span class="big-player__item-title"></span>
+				<span class="big-player__item-artist"></span>
+			</span>
+		</div>
+	</template>
+</section>
+
+<script>
+	import { setupBigPlayer } from "@/utils/big-player-controller";
+
+	// 单页站点，模块脚本本身只执行一次；data 标记兜底防止重复挂载
+	const root = document.querySelector<HTMLElement>("[data-big-player]");
+	if (root && root.dataset.bpReady !== "true") {
+		root.dataset.bpReady = "true";
+		setupBigPlayer();
+	}
+</script>

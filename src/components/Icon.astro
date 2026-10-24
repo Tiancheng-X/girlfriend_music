@@ -1,0 +1,31 @@
+---
+// 移植自 my-blog:src/components/common/Icon.astro（去掉 astro-icon 依赖，改为内联 SVG）
+// 只支持本项目用到的 material-symbols / mdi 图标，未登记的 name 会渲染空 SVG。
+import { ICON_DATA } from "./icon-paths";
+
+interface Props {
+	name: string;
+	class?: string;
+	"aria-hidden"?: boolean | "true" | "false";
+	title?: string;
+}
+
+const { name, class: className, title, ...rest } = Astro.props;
+const icon = ICON_DATA[name];
+const viewBox = icon ? `0 0 ${icon.width ?? 24} ${icon.height ?? 24}` : "0 0 24 24";
+---
+
+<svg
+	xmlns="http://www.w3.org/2000/svg"
+	viewBox={viewBox}
+	width="1em"
+	height="1em"
+	fill="currentColor"
+	class={className}
+	aria-hidden={title ? undefined : "true"}
+	focusable="false"
+	set:html={icon?.body ?? ""}
+	{...rest}
+>
+	{title && <title>{title}</title>}
+</svg>

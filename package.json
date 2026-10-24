@@ -1,0 +1,23 @@
+{
+	"name": "girlfriend-music",
+	"type": "module",
+	"version": "0.1.0",
+	"private": true,
+	"packageManager": "pnpm@9.14.4",
+	"scripts": {
+		"dev": "astro dev",
+		"start": "astro dev",
+		"build": "astro build",
+		"preview": "astro preview",
+		"check": "astro check",
+		"astro": "astro"
+	},
+	"dependencies": {
+		"astro": "7.1.6"
+	},
+	"devDependencies": {
+		"@astrojs/check": "^0.9.10",
+		"@types/node": "^22.10.2",
+		"typescript": "^5.7.2"
+	}
+}

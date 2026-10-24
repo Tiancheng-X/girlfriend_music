@@ -402,6 +402,10 @@ html.amll-bg-live .np-ambient {
 	flex: 1;
 	min-height: 120px;
 	height: auto;
+	width: 100%;
+	max-width: 460px;
+	/* 宽度不随已加载歌名变化；滚动条出现时不挤压内容 */
+	scrollbar-gutter: stable;
 	overflow-y: auto;
 	position: relative;
 	padding: 6px 4px;

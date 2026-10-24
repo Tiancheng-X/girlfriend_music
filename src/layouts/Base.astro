@@ -1,8 +1,9 @@
 ---
-// 新写：暗色主题根布局。参考 my-blog:src/layouts/Layout.astro 的挂载方式，
-// 只保留音乐播放器需要的最小骨架（html/head/body + 主题变量 + 播放器样式）。
+// 重写：Apple Music 风暗色主题根布局（票据 03 tokens 定稿）。
+// 播放引擎 MusicManager 挂载单例；MiniPlayer 挂载氛围背景 + mini-player + 正在播放 sheet。
 import MusicManager from "@/components/MusicManager.astro";
-import "@/styles/music-player.css";
+import MiniPlayer from "@/components/MiniPlayer.astro";
+import "@/styles/player.css";
 
 interface Props {
 	title?: string;
@@ -17,30 +18,31 @@ const { title = "宝宝的歌单" } = Astro.props;
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<meta name="color-scheme" content="dark" />
-		<meta name="theme-color" content="#0b1416" />
+		<meta name="theme-color" content="#101013" />
 		<title>{title}</title>
 	</head>
 	<body>
 		<slot />
-		<!-- 播放引擎单例：暴露 window.__fireflyMusic，供 MusicPlayer 控制器驱动 -->
+		<!-- 播放引擎单例：暴露 window.__fireflyMusic，供控制器驱动 -->
 		<MusicManager />
+		<!-- 全局播放器外壳：氛围背景 + mini-player + 正在播放 sheet -->
+		<MiniPlayer />
 	</body>
 </html>
 
 <style is:global>
-	/* ── 主题变量 ─────────────────────────────────────────────
-	   暗色 + hue 165 青蓝系。播放器样式（music-player.css）只认这些变量，不认具体色值。 */
+	/* ── 设计 tokens（票据 03 定稿：无彩深灰底 + #fa2d48 强调） ── */
 	:root {
-		--hue: 165;
-		--primary: oklch(0.78 0.12 var(--hue));
-		--page-bg: oklch(0.16 0.012 var(--hue));
-		--deep-text: oklch(0.91 0.008 var(--hue));
-		--content-meta: oklch(0.68 0.012 var(--hue));
-		--float-panel-bg: oklch(0.21 0.014 var(--hue));
-		--music-surface: oklch(0.21 0.014 var(--hue));
-		--line-divider: oklch(0.29 0.014 var(--hue));
-		--btn-plain-bg-hover: oklch(0.25 0.014 var(--hue));
-		--radius-small: 0.5rem;
+		--am-bg: #101013;
+		--am-surface: #1a1a1f;
+		--am-accent: #fa2d48;
+		--am-text: oklch(0.98 0 0);
+		--am-text-2: oklch(0.7 0 0);
+		--am-text-3: oklch(0.55 0 0);
+		--am-line: rgba(255, 255, 255, 0.12);
+		--am-mat: rgba(24, 24, 28, 0.55); /* L1 玻璃基色：mini / sheet */
+		--am-mat-heavy: rgba(18, 18, 21, 0.78); /* sheet 体色 */
+		--am-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
 
 		color-scheme: dark;
 	}
@@ -53,55 +55,32 @@ const { title = "宝宝的歌单" } = Astro.props;
 	}
 
 	body {
-		background: var(--page-bg);
-		color: var(--deep-text);
+		background: var(--am-bg);
+		color: var(--am-text);
 		font-family:
-			system-ui,
 			-apple-system,
-			"Segoe UI",
+			"SF Pro Text",
+			system-ui,
 			"PingFang SC",
-			"Hiragino Sans GB",
+			"MiSans",
 			"Microsoft YaHei",
 			sans-serif;
 		-webkit-font-smoothing: antialiased;
 	}
 
-	/* ── 工具类 ───────────────────────────────────────────────
-	   原站由 Tailwind 提供 hidden / text-* 尺寸；本项目不引入 Tailwind，
-	   这里给出播放器实际用到的等价规则（JS 里按 classList 切换 .is-hidden）。 */
+	/* sheet 打开时锁页面滚动 */
+	body.np-lock {
+		overflow: hidden;
+	}
+
 	.is-hidden {
 		display: none !important;
 	}
 
-	.mp-icon-sm {
-		font-size: 0.875rem;
-	}
-
-	.mp-icon-md {
-		font-size: 1.125rem;
-	}
-
-	.mp-icon-lg {
-		font-size: 1.25rem;
-	}
-
-	.mp-icon-xl {
-		font-size: 1.5rem;
-	}
-
-	.mp-icon-2xl {
-		font-size: 1.875rem;
-	}
-
-	/* 歌单条目高亮标题色（原站是 Tailwind 的 text-(--primary)） */
-	.music-player__track-title.is-accent {
-		color: var(--primary);
-	}
-
-	/* 原站 custom-scrollbar 全局类（滚动条细化），这里只保留播放器需要的最小子集 */
+	/* sheet 内滚动条细化 */
 	.custom-scrollbar {
 		scrollbar-width: thin;
-		scrollbar-color: color-mix(in srgb, var(--deep-text) 22%, transparent) transparent;
+		scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 	}
 
 	.custom-scrollbar::-webkit-scrollbar {
@@ -113,11 +92,7 @@ const { title = "宝宝的歌单" } = Astro.props;
 	}
 
 	.custom-scrollbar::-webkit-scrollbar-thumb {
-		background: color-mix(in srgb, var(--deep-text) 22%, transparent);
+		background: rgba(255, 255, 255, 0.2);
 		border-radius: 3px;
-	}
-
-	.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-		background: color-mix(in srgb, var(--deep-text) 34%, transparent);
 	}
 </style>

@@ -87,4 +87,14 @@ export const ICON_DATA: Record<string, IconData> = {
 		height: 24,
 		body: "<path fill=\"currentColor\" d=\"M15 6H3v2h12zm0 4H3v2h12zM3 16h8v-2H3zM17 6v8.18c-.31-.11-.65-.18-1-.18a3 3 0 0 0-3 3a3 3 0 0 0 3 3a3 3 0 0 0 3-3V8h3V6z\"/>",
 	},
+	"mdi:chevron-up": {
+		width: 24,
+		height: 24,
+		body: "<path fill=\"currentColor\" d=\"M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z\"/>",
+	},
+	"mdi:chevron-down": {
+		width: 24,
+		height: 24,
+		body: "<path fill=\"currentColor\" d=\"M7.41 8.58 12 13.17l4.59-4.59L18 10l-6 6-6-6z\"/>",
+	},
 };

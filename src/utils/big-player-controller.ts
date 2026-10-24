@@ -1,570 +1,258 @@
-// 大播放器控制器：订阅 window.__fireflyMusic 的 fm:* 事件，把引擎状态渲染到 BigPlayer.astro 的结构上。
+// 重写：首页大播放器（布局 A）的视图控制器。
+// 氛围背景与 mini/sheet 由 sheet-controller 负责；本模块只同步大播放器自身 UI：
+// 封面/曲名/当前歌词行预览、进度 1:1 拖拽、音量、播放模式，以及 fm:* 事件消费。
 import { t } from "@/i18n/zh";
-
-interface LyricLine {
-	time: number;
-	text: string;
-}
-
-interface TrackInfo {
-	name: string;
-	artist: string;
-	url: string;
-	pic?: string;
-	lrc?: string;
-}
-
-interface InitDetail {
-	playlist: TrackInfo[];
-	playMode: number;
-	volume: number;
-	isMuted: boolean;
-}
-
-interface TrackDetail {
-	index: number;
-	track: TrackInfo;
-}
-
-interface PlayStateDetail {
-	isPlaying: boolean;
-}
-
-interface ModeDetail {
-	playMode: number;
-}
-
-interface VolumeDetail {
-	volume: number;
-	isMuted: boolean;
-}
-
-interface TimeDetail {
-	progress: number;
-	currentTimeStr: string;
-	durationStr: string;
-}
-
-interface LyricsDetail {
-	lyrics: LyricLine[];
-	status: string;
-}
-
-interface LrcIndexDetail {
-	index: number;
-}
-
-interface ErrorDetail {
-	message?: string;
-}
-
-/** 用户手动滚动歌词后，暂停自动跟随的时长（ms） */
-const LYRICS_SCROLL_RESUME_MS = 3000;
-
-function prefersReducedMotion(): boolean {
-	return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
+import { bindPressFeedback, bindScrub } from "./gesture";
 
 function formatTime(seconds: number): string {
-	if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
+	if (!seconds || Number.isNaN(seconds)) return "0:00";
 	const min = Math.floor(seconds / 60);
 	const sec = Math.floor(seconds % 60);
 	return `${min}:${sec < 10 ? "0" : ""}${sec}`;
 }
 
-/**
- * 挂载大播放器。引擎单例缺失（脚本未执行）或结构不完整时直接返回，
- * 不创建任何 <audio>：播放始终经由 window.__fireflyMusic。
- */
 export function setupBigPlayer(): void {
-	const rootElement = document.querySelector<HTMLElement>("[data-big-player]");
-	const musicManager = window.__fireflyMusic;
-	if (!rootElement || !musicManager) return;
-	const root = rootElement;
-	const mgr = musicManager;
-
-	const $ = <T extends HTMLElement>(selector: string): T | null =>
-		root.querySelector<T>(selector);
-
-	const ui = {
-		cover: $("[data-big-player-cover]"),
-		coverImg: $<HTMLImageElement>(".big-player__cover-img"),
-		title: $(".big-player__title"),
-		artist: $(".big-player__artist"),
-		btnPlay: $("[data-big-player-play]"),
-		iconPlay: $(".big-player__icon-play"),
-		iconPause: $(".big-player__icon-pause"),
-		btnPrev: $("[data-big-player-prev]"),
-		btnNext: $("[data-big-player-next]"),
-		btnMode: $("[data-big-player-mode]"),
-		iconModeList: $(".big-player__icon-mode-list"),
-		iconModeOne: $(".big-player__icon-mode-one"),
-		iconModeShuffle: $(".big-player__icon-mode-shuffle"),
-		modeLabel: $("[data-big-player-mode-label]"),
-		btnMute: $("[data-big-player-mute]"),
-		iconVolOn: $(".big-player__icon-vol-on"),
-		iconVolOff: $(".big-player__icon-vol-off"),
-		volumeSlider: $("[data-big-player-volume]"),
-		progress: $("[data-big-player-progress]"),
-		timeCurrent: $("[data-big-player-time-current]"),
-		timeTotal: $("[data-big-player-time-total]"),
-		lyricsList: $("[data-big-player-lyrics]"),
-		playlistList: $("[data-big-player-playlist]"),
-		count: $("[data-big-player-count]"),
-		error: $("[data-big-player-error]"),
-		itemTemplate: document.querySelector<HTMLTemplateElement>(
-			"#big-player-item-template",
-		),
-	};
-
-	const required: (Element | null)[] = [
-		ui.cover,
-		ui.coverImg,
-		ui.title,
-		ui.btnPlay,
-		ui.btnPrev,
-		ui.btnNext,
-		ui.btnMode,
-		ui.btnMute,
-		ui.volumeSlider,
-		ui.progress,
-		ui.timeCurrent,
-		ui.timeTotal,
-		ui.lyricsList,
-		ui.playlistList,
-		ui.itemTemplate,
-	];
-	if (required.some((element) => element === null)) return;
+	const root = document.querySelector<HTMLElement>("[data-big-player]");
+	const engine = window.__fireflyMusic;
+	if (!root || !engine) return;
+	const mgr = engine;
 
 	const abort = new AbortController();
 	const signal = abort.signal;
 
-	let isSeeking = false;
-	let isUserScrollingLyrics = false;
-	let lyricsScrollTimer: number | null = null;
-	let currentLrcIndex = -1;
-	let activeItem: HTMLElement | null = null;
+	const $ = <T extends HTMLElement = HTMLElement>(selector: string): T | null =>
+		root.querySelector<T>(selector);
 
-	// ── 通用小工具 ──────────────────────────────────────────
-	function setHidden(element: HTMLElement | null, hidden: boolean): void {
-		element?.classList.toggle("is-hidden", hidden);
+	const els = {
+		cover: $(".bp-cover"),
+		coverImg: $<HTMLImageElement>("[data-img]"),
+		title: $(".bp-title"),
+		artist: $(".bp-artist"),
+		lyric: $(".bp-lyric"),
+		timeCur: $("[data-time-current]"),
+		timeTotal: $("[data-time-total]"),
+		progress: $(".bp-progress"),
+		bar: $("[data-bar]"),
+		thumb: $("[data-thumb]"),
+		mode: $<HTMLButtonElement>("[data-mode]"),
+		iconModeList: $(".icon-mode-list"),
+		iconModeOne: $(".icon-mode-one"),
+		iconModeShuffle: $(".icon-mode-shuffle"),
+		prev: $<HTMLButtonElement>("[data-prev]"),
+		play: $<HTMLButtonElement>("[data-play]"),
+		iconPlay: $(".icon-play"),
+		iconPause: $(".icon-pause"),
+		next: $<HTMLButtonElement>("[data-next]"),
+		mute: $<HTMLButtonElement>("[data-mute]"),
+		iconVolOn: $(".icon-vol-on"),
+		iconVolOff: $(".icon-vol-off"),
+		volume: $<HTMLInputElement>("[data-volume]"),
+		error: $("[data-error]"),
+	};
+
+	const critical: (Element | null)[] = [
+		els.cover, els.coverImg, els.title, els.artist, els.lyric, els.timeCur, els.timeTotal,
+		els.progress, els.bar, els.thumb, els.mode, els.iconModeList, els.iconModeOne,
+		els.iconModeShuffle, els.prev, els.play, els.iconPlay, els.iconPause, els.next,
+		els.mute, els.iconVolOn, els.iconVolOff, els.volume, els.error,
+	];
+	if (critical.some((el) => el === null)) return;
+
+	let seeking = false;
+
+	function ensureInit(): void {
+		if (mgr.getState().initialized) return;
+		void mgr.init();
 	}
 
-	function setText(element: HTMLElement | null, text: string): void {
-		if (element && element.textContent !== text) element.textContent = text;
-	}
-
-	function renderPlaceholder(container: HTMLElement, text: string): void {
-		const hint = document.createElement("p");
-		hint.className = "big-player__hint";
-		hint.textContent = text;
-		container.replaceChildren(hint);
-	}
-
-	// ── 渲染 ────────────────────────────────────────────────
-	function applyTrack(track: TrackInfo | null): void {
-		const pic = track?.pic ?? "";
-		ui.cover?.classList.toggle("is-empty", pic === "");
-		if (ui.coverImg) {
-			if (pic === "" || !track) {
-				ui.coverImg.removeAttribute("src");
-				ui.coverImg.alt = "";
-			} else {
-				ui.coverImg.src = pic;
-				ui.coverImg.alt = `${track.name} - ${track.artist}`;
-			}
-		}
-		setText(ui.title, track ? track.name : t("musicNoPlaying"));
-		if (ui.title) ui.title.title = track ? track.name : "";
-		setText(ui.artist, track ? track.artist : "");
-	}
-
-	function applyPlayState(playing: boolean): void {
-		root.dataset.playing = playing ? "true" : "false";
-		setHidden(ui.iconPlay, playing);
-		setHidden(ui.iconPause, !playing);
+	function updatePlayIcons(playing: boolean): void {
+		els.iconPlay?.classList.toggle("is-hidden", playing);
+		els.iconPause?.classList.toggle("is-hidden", !playing);
 		const label = playing ? t("musicPause") : t("musicPlay");
-		ui.btnPlay?.setAttribute("aria-label", label);
+		els.play?.setAttribute("aria-label", label);
 	}
 
-	function applyMode(mode: number): void {
-		const isList = mode === 0;
-		const isOne = mode === 1;
-		setHidden(ui.iconModeList, !isList);
-		setHidden(ui.iconModeOne, !isOne);
-		setHidden(ui.iconModeShuffle, isList || isOne);
-		const label = isList
-			? t("playModeList")
-			: isOne
-				? t("playModeSingle")
-				: t("playModeShuffle");
-		setText(ui.modeLabel, label);
-		ui.btnMode?.setAttribute("aria-label", label);
-		ui.btnMode?.classList.toggle("is-active", !isList);
+	function updateModeUI(playMode: number): void {
+		const isList = playMode === 0;
+		const isOne = playMode === 1;
+		els.iconModeList?.classList.toggle("is-hidden", !isList);
+		els.iconModeOne?.classList.toggle("is-hidden", !isOne);
+		els.iconModeShuffle?.classList.toggle("is-hidden", isList || isOne);
+		els.mode?.classList.toggle("is-alt", !isList);
+		const label = isList ? t("playModeList") : isOne ? t("playModeSingle") : t("playModeShuffle");
+		els.mode?.setAttribute("aria-label", label);
 	}
 
-	function applyVolume(volume: number, isMuted: boolean): void {
-		const percent = isMuted ? 0 : Math.round(volume * 100);
-		ui.volumeSlider?.style.setProperty("--vol", percent.toString());
-		ui.volumeSlider?.setAttribute("aria-valuenow", percent.toString());
+	function updateVolumeUI(volume: number, isMuted: boolean): void {
+		const pct = isMuted ? 0 : volume * 100;
+		if (els.volume && document.activeElement !== els.volume) {
+			els.volume.value = String(Math.round(pct));
+		}
 		const muted = isMuted || volume === 0;
-		setHidden(ui.iconVolOn, muted);
-		setHidden(ui.iconVolOff, !muted);
-		ui.btnMute?.setAttribute("aria-pressed", muted ? "true" : "false");
+		els.iconVolOn?.classList.toggle("is-hidden", muted);
+		els.iconVolOff?.classList.toggle("is-hidden", !muted);
+		els.mute?.setAttribute("aria-pressed", String(muted));
 	}
 
-	function applyTime(
-		progress: number,
-		currentTimeStr: string,
-		durationStr: string,
-	): void {
-		const clamped = Number.isFinite(progress)
-			? Math.min(100, Math.max(0, progress))
-			: 0;
-		ui.progress?.style.setProperty("--progress", clamped.toFixed(2));
-		ui.progress?.setAttribute("aria-valuenow", Math.round(clamped).toString());
-		setText(ui.timeCurrent, currentTimeStr);
-		setText(ui.timeTotal, durationStr);
+	function updateProgressUI(progress: number, currentStr: string, durationStr: string): void {
+		if (els.bar) els.bar.style.width = `${progress}%`;
+		if (els.thumb) els.thumb.style.left = `${progress}%`;
+		els.progress?.setAttribute("aria-valuenow", Math.round(progress).toString());
+		if (els.timeCur) els.timeCur.textContent = currentStr;
+		if (els.timeTotal) els.timeTotal.textContent = durationStr;
+	}
+
+	function updateTrackUI(track: { name: string; artist: string; pic?: string } | null): void {
+		if (!track) return;
+		if (els.title) {
+			els.title.textContent = track.name;
+			els.title.title = track.name;
+		}
+		if (els.artist) {
+			els.artist.textContent = track.artist;
+			els.artist.title = track.artist;
+		}
+		if (els.coverImg) {
+			els.coverImg.src = track.pic || "";
+			els.coverImg.alt = `${track.name} - ${track.artist}`;
+			els.cover?.classList.toggle("is-empty", !track.pic);
+		}
+		if (els.lyric) els.lyric.textContent = "";
+		updateProgressUI(0, "0:00", "0:00");
+	}
+
+	function updateLyricPreview(lyrics: Array<{ time: number; text: string }>, index: number): void {
+		if (!els.lyric) return;
+		const line = index >= 0 && index < lyrics.length ? lyrics[index] : undefined;
+		els.lyric.textContent = line ? line.text : "";
 	}
 
 	function showError(message: string): void {
-		if (!ui.error) return;
-		ui.error.textContent = message;
-		ui.error.classList.remove("is-hidden");
+		if (!els.error) return;
+		els.error.textContent = message;
+		els.error.classList.remove("is-hidden");
 	}
 
 	function hideError(): void {
-		ui.error?.classList.add("is-hidden");
+		els.error?.classList.add("is-hidden");
 	}
 
-	// ── 歌单 ────────────────────────────────────────────────
-	function revealItem(item: HTMLElement): void {
-		const list = ui.playlistList;
-		if (!list) return;
-		const listRect = list.getBoundingClientRect();
-		const itemRect = item.getBoundingClientRect();
-		if (itemRect.top < listRect.top) {
-			list.scrollTop -= listRect.top - itemRect.top;
-		} else if (itemRect.bottom > listRect.bottom) {
-			list.scrollTop += itemRect.bottom - listRect.bottom;
-		}
-	}
-
-	function applyActiveIndex(index: number): void {
-		const list = ui.playlistList;
-		if (!list) return;
-		const next = list.querySelector<HTMLElement>(
-			`[data-big-player-item][data-index="${index}"]`,
-		);
-		if (next === activeItem) return;
-		if (activeItem) {
-			activeItem.classList.remove("is-active");
-			activeItem.removeAttribute("aria-current");
-			activeItem.setAttribute("aria-selected", "false");
-		}
-		activeItem = next;
-		if (activeItem) {
-			activeItem.classList.add("is-active");
-			activeItem.setAttribute("aria-current", "true");
-			activeItem.setAttribute("aria-selected", "true");
-			revealItem(activeItem);
-		}
-	}
-
-	function renderPlaylist(playlist: TrackInfo[], currentIndex: number): void {
-		const list = ui.playlistList;
-		const template = ui.itemTemplate;
-		if (!list || !template) return;
-		activeItem = null;
-		setText(ui.count, playlist.length.toString());
-		list.setAttribute("aria-busy", "false");
-		if (playlist.length === 0) {
-			renderPlaceholder(list, t("musicNoSongs"));
-			return;
-		}
-		const fragment = document.createDocumentFragment();
-		playlist.forEach((track, index) => {
-			const clone = template.content.cloneNode(true) as DocumentFragment;
-			const item = clone.querySelector<HTMLElement>("[data-big-player-item]");
-			const order = clone.querySelector<HTMLElement>(".big-player__item-index");
-			const title = clone.querySelector<HTMLElement>(".big-player__item-title");
-			const artist = clone.querySelector<HTMLElement>(".big-player__item-artist");
-			if (!item || !order || !title || !artist) return;
-			item.dataset.index = index.toString();
-			item.setAttribute("aria-selected", "false");
-			item.setAttribute("aria-label", `${track.name} - ${track.artist}`);
-			order.textContent = (index + 1).toString();
-			title.textContent = track.name;
-			title.title = track.name;
-			artist.textContent = track.artist;
-			artist.title = track.artist;
-			fragment.appendChild(clone);
-		});
-		list.replaceChildren(fragment);
-		applyActiveIndex(currentIndex);
-	}
-
-	// ── 歌词 ────────────────────────────────────────────────
-	function scrollLyricIntoView(index: number): void {
-		const list = ui.lyricsList;
-		if (!list) return;
-		const line = list.querySelector<HTMLElement>(`[data-index="${index}"]`);
-		if (!line) return;
-		const listRect = list.getBoundingClientRect();
-		const lineRect = line.getBoundingClientRect();
-		const target =
-			list.scrollTop +
-			(lineRect.top - listRect.top) -
-			list.clientHeight / 2 +
-			lineRect.height / 2;
-		list.scrollTo({
-			top: Math.max(0, target),
-			behavior: prefersReducedMotion() ? "auto" : "smooth",
-		});
-	}
-
-	function applyLrcIndex(index: number): void {
-		if (index === currentLrcIndex) return;
-		currentLrcIndex = index;
-		const list = ui.lyricsList;
-		if (!list) return;
-		list.querySelectorAll<HTMLElement>(".big-player__lrc-line").forEach((line) => {
-			const active = Number.parseInt(line.dataset.index ?? "-1", 10) === index;
-			line.classList.toggle("is-active", active);
-			line.setAttribute("aria-selected", active ? "true" : "false");
-		});
-		if (index >= 0 && !isUserScrollingLyrics) scrollLyricIntoView(index);
-	}
-
-	function renderLyrics(lines: LyricLine[], status: string): void {
-		const list = ui.lyricsList;
-		if (!list) return;
-		currentLrcIndex = -1;
-		if (status === "loading") {
-			renderPlaceholder(list, t("musicLoadingLyrics"));
-			return;
-		}
-		if (status === "failed") {
-			renderPlaceholder(list, t("musicFailedLyrics"));
-			return;
-		}
-		if (lines.length === 0) {
-			renderPlaceholder(list, t("musicNoLyrics"));
-			return;
-		}
-		const fragment = document.createDocumentFragment();
-		lines.forEach((line, index) => {
-			const element = document.createElement("div");
-			element.className = "big-player__lrc-line";
-			element.dataset.index = index.toString();
-			element.setAttribute("role", "option");
-			element.setAttribute("aria-selected", "false");
-			element.textContent = line.text;
-			fragment.appendChild(element);
-		});
-		list.replaceChildren(fragment);
-	}
-
-	function resumeLyricsFollow(): void {
-		if (lyricsScrollTimer !== null) window.clearTimeout(lyricsScrollTimer);
-		lyricsScrollTimer = window.setTimeout(() => {
-			lyricsScrollTimer = null;
-			isUserScrollingLyrics = false;
-			if (currentLrcIndex >= 0) scrollLyricIntoView(currentLrcIndex);
-		}, LYRICS_SCROLL_RESUME_MS);
-	}
-
-	// ── 滑块拖拽（进度 / 音量共用） ──────────────────────────
-	function bindSlider(
-		surface: HTMLElement | null,
-		onInput: (ratio: number) => void,
-		onCommit?: (ratio: number) => void,
-	): void {
-		if (!surface) return;
-		const rail = surface;
-		surface.addEventListener(
-			"pointerdown",
-			(event: PointerEvent) => {
-				if (event.pointerType === "mouse" && event.button !== 0) return;
-				event.preventDefault();
-				rail.setPointerCapture(event.pointerId);
-				rail.classList.add("is-dragging");
-				const ratioAt = (clientX: number): number => {
-					const rect = rail.getBoundingClientRect();
-					return Math.min(
-						1,
-						Math.max(0, (clientX - rect.left) / (rect.width || 1)),
-					);
-				};
-				onInput(ratioAt(event.clientX));
-				const onMove = (moveEvent: PointerEvent): void => {
-					onInput(ratioAt(moveEvent.clientX));
-				};
-				const onUp = (upEvent: PointerEvent): void => {
-					rail.removeEventListener("pointermove", onMove);
-					rail.removeEventListener("pointerup", onUp);
-					rail.removeEventListener("pointercancel", onUp);
-					rail.classList.remove("is-dragging");
-					onCommit?.(ratioAt(upEvent.clientX));
-				};
-				rail.addEventListener("pointermove", onMove);
-				rail.addEventListener("pointerup", onUp);
-				rail.addEventListener("pointercancel", onUp);
-			},
-			{ signal },
-		);
-	}
-
-	bindSlider(
-		ui.progress,
+	// ── 拖拽（进度 1:1，提交才 seek）与音量 ──────────────────
+	bindScrub(
+		els.progress!,
 		(ratio) => {
-			isSeeking = true;
-			const duration = mgr.getState().duration;
-			applyTime(
-				ratio * 100,
-				formatTime(ratio * duration),
-				ui.timeTotal?.textContent ?? "0:00",
-			);
+			seeking = true;
+			const duration = mgr.getState().duration || 0;
+			updateProgressUI(ratio * 100, formatTime(ratio * duration), els.timeTotal?.textContent ?? "0:00");
 		},
 		(ratio) => {
-			isSeeking = false;
+			seeking = false;
 			mgr.seek(ratio);
 		},
+		signal,
 	);
 
-	bindSlider(ui.volumeSlider, (ratio) => {
-		mgr.setVolume(ratio);
-	});
+	els.volume?.addEventListener(
+		"input",
+		() => {
+			mgr.setVolume(Number.parseInt(els.volume?.value ?? "60", 10) / 100);
+		},
+		{ signal },
+	);
 
-	// ── 交互 ────────────────────────────────────────────────
-	ui.btnPlay?.addEventListener(
+	els.play?.addEventListener(
 		"click",
 		() => {
 			if (!mgr.getState().initialized) {
-				void mgr.init();
+				ensureInit();
 				return;
 			}
 			mgr.togglePlay();
 		},
 		{ signal },
 	);
-	ui.btnPrev?.addEventListener("click", () => mgr.playPrev(), { signal });
-	ui.btnNext?.addEventListener("click", () => mgr.playNext(), { signal });
-	ui.btnMode?.addEventListener("click", () => mgr.cyclePlayMode(), { signal });
-	ui.btnMute?.addEventListener("click", () => mgr.toggleMute(), { signal });
+	els.prev?.addEventListener("click", () => mgr.playPrev(), { signal });
+	els.next?.addEventListener("click", () => mgr.playNext(), { signal });
+	els.mode?.addEventListener("click", () => mgr.cyclePlayMode(), { signal });
+	els.mute?.addEventListener("click", () => mgr.toggleMute(), { signal });
 
-	ui.playlistList?.addEventListener(
-		"click",
-		(event) => {
-			const target = event.target;
-			if (!(target instanceof Element)) return;
-			const item = target.closest<HTMLElement>("[data-big-player-item]");
-			if (!item) return;
-			const index = Number.parseInt(item.dataset.index ?? "-1", 10);
-			if (index >= 0) mgr.playTrackByIndex(index);
-		},
-		{ signal },
-	);
-
-	ui.lyricsList?.addEventListener(
-		"click",
-		(event) => {
-			const target = event.target;
-			if (!(target instanceof Element)) return;
-			const line = target.closest<HTMLElement>(".big-player__lrc-line");
-			if (!line) return;
-			const index = Number.parseInt(line.dataset.index ?? "-1", 10);
-			const lyric = mgr.getState().lyrics[index];
-			if (lyric) mgr.seekToTime(lyric.time);
-		},
-		{ signal },
-	);
-
-	const markUserScroll = (): void => {
-		isUserScrollingLyrics = true;
-		resumeLyricsFollow();
-	};
-	ui.lyricsList?.addEventListener("wheel", markUserScroll, {
-		passive: true,
-		signal,
-	});
-	ui.lyricsList?.addEventListener("touchstart", markUserScroll, {
-		passive: true,
-		signal,
-	});
-
-	// ── fm:* 事件订阅 ───────────────────────────────────────
+	// ── fm:* 事件订阅 ────────────────────────────────────────
 	function on<T>(name: string, handler: (detail: T) => void): void {
-		window.addEventListener(
-			name,
-			(event) => {
-				handler((event as CustomEvent<T>).detail);
-			},
-			{ signal },
-		);
+		window.addEventListener(name, (event) => {
+			handler((event as CustomEvent<T>).detail);
+		}, { signal });
 	}
 
-	on<InitDetail>("fm:init", (detail) => {
+	interface TrackInfo {
+		name: string;
+		artist: string;
+		url: string;
+		pic?: string;
+		lrc?: string;
+	}
+	interface LyricLine {
+		time: number;
+		text: string;
+	}
+
+	on<{ playlist: TrackInfo[]; playMode: number; volume: number; isMuted: boolean }>("fm:init", (d) => {
 		hideError();
-		applyMode(detail.playMode);
-		applyVolume(detail.volume, detail.isMuted);
-		renderPlaylist(detail.playlist, 0);
+		if (d.playlist.length > 0) {
+			updateModeUI(d.playMode);
+			updateVolumeUI(d.volume, d.isMuted);
+		} else if (els.title) {
+			els.title.textContent = t("musicNoSongs");
+		}
 	});
 
-	on<TrackDetail>("fm:track", (detail) => {
-		applyTrack(detail.track);
-		applyActiveIndex(detail.index);
-		applyTime(0, "0:00", "0:00");
+	on<{ index: number; track: TrackInfo }>("fm:track", (d) => {
+		hideError();
+		updateTrackUI(d.track);
 	});
 
-	on<PlayStateDetail>("fm:play-state", (detail) => {
-		applyPlayState(detail.isPlaying);
+	on<{ isPlaying: boolean }>("fm:play-state", (d) => {
+		updatePlayIcons(d.isPlaying);
 	});
 
-	on<TimeDetail>("fm:time", (detail) => {
-		if (isSeeking) return;
-		applyTime(detail.progress, detail.currentTimeStr, detail.durationStr);
+	on<{ progress: number; currentTimeStr: string; durationStr: string }>("fm:time", (d) => {
+		if (seeking) return;
+		updateProgressUI(d.progress, d.currentTimeStr, d.durationStr);
 	});
 
-	on<ModeDetail>("fm:mode", (detail) => {
-		applyMode(detail.playMode);
+	on<{ volume: number; isMuted: boolean }>("fm:volume", (d) => {
+		updateVolumeUI(d.volume, d.isMuted);
 	});
 
-	on<VolumeDetail>("fm:volume", (detail) => {
-		applyVolume(detail.volume, detail.isMuted);
+	on<{ playMode: number }>("fm:mode", (d) => {
+		updateModeUI(d.playMode);
 	});
 
-	on<LyricsDetail>("fm:lyrics", (detail) => {
-		renderLyrics(detail.lyrics, detail.status);
+	on<{ index: number }>("fm:lrc-index", (d) => {
+		updateLyricPreview(mgr.getState().lyrics as LyricLine[], d.index);
 	});
 
-	on<LrcIndexDetail>("fm:lrc-index", (detail) => {
-		applyLrcIndex(detail.index);
+	on<{ message: string }>("fm:error", (d) => {
+		showError(d.message || t("musicError"));
 	});
 
-	on<ErrorDetail>("fm:error", (detail) => {
-		showError(detail.message || t("musicError"));
-		// 拉不到歌单时把骨架行换成空态，避免一直转
-		const state = mgr.getState();
-		if (state.playlist.length === 0) renderPlaylist([], 0);
-	});
-
-	// ── 初始状态 ────────────────────────────────────────────
-	const initial = mgr.getState();
-	if (initial.initialized) {
-		applyPlayState(initial.isPlaying);
-		applyMode(initial.playMode);
-		applyVolume(initial.volume, initial.isMuted);
-		renderPlaylist(initial.playlist, initial.currentIndex);
-		applyTrack(initial.track);
-		applyTime(initial.progress, initial.currentTimeStr, initial.durationStr);
-		renderLyrics(
-			initial.lyrics,
-			initial.lyricsStatus ?? (initial.lyrics.length > 0 ? "loaded" : "none"),
-		);
-		applyLrcIndex(initial.currentLrcIndex);
-	} else {
-		// 引擎不自行 init：由首页（大播放器）负责首次拉取歌单，胶囊复用同一份状态
-		void mgr.init();
+	// ── 全量同步（脚本晚于引擎初始化时） ─────────────────────
+	function syncAll(): void {
+		const s = mgr.getState();
+		if (!s.initialized) return;
+		hideError();
+		if (s.playlist.length === 0) {
+			if (els.title) els.title.textContent = s.error || t("musicNoSongs");
+			return;
+		}
+		updateTrackUI((s.track as TrackInfo | null) ?? null);
+		updatePlayIcons(s.isPlaying);
+		updateModeUI(s.playMode);
+		updateVolumeUI(s.volume, s.isMuted);
+		if (s.duration > 0) updateProgressUI(s.progress, s.currentTimeStr, s.durationStr);
+		updateLyricPreview(s.lyrics as LyricLine[], s.currentLrcIndex);
 	}
+
+	bindPressFeedback(root);
+
+	if (mgr.getState().initialized) syncAll();
 }

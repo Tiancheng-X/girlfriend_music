@@ -1,0 +1,158 @@
+---
+// 新写：全局播放器外壳——氛围背景层、底部 mini-player、全屏正在播放 sheet。
+// 结构在这里静态渲染，状态与手势全部交给 src/utils/sheet-controller.ts。
+// 替代退役的 MusicPlayer.astro 三态胶囊（票据 04/07 定稿）。
+import Icon from "@/components/Icon.astro";
+import { t } from "@/i18n/zh";
+import "@/styles/player.css";
+---
+
+<div class="np-ambient" data-ambient-a aria-hidden="true"></div>
+<div class="np-ambient" data-ambient-b aria-hidden="true"></div>
+
+<!-- mini-player：常驻底部，轻点或上拉展开正在播放 sheet -->
+<div class="mini-player" data-mini-player aria-label="迷你播放器">
+	<div class="mini-cover">
+		<img data-mini-img alt="" width="44" height="44" decoding="async" />
+	</div>
+	<div class="mini-text">
+		<span class="mini-name" data-mini-name>{t("musicNoPlaying")}</span>
+		<span class="mini-artist" data-mini-artist></span>
+	</div>
+	<span class="mini-eq" data-eq aria-hidden="true"><i></i><i></i><i></i></span>
+	<button class="mini-btn" type="button" data-mini-play aria-label={t("musicPlay")}>
+		<Icon name="material-symbols:play-arrow-rounded" class="icon-play" />
+		<Icon name="material-symbols:pause-rounded" class="icon-pause is-hidden" />
+	</button>
+	<span class="mini-grip" aria-hidden="true"><Icon name="mdi:chevron-up" /></span>
+	<span class="mini-progress" aria-hidden="true"><span data-mini-progress></span></span>
+</div>
+
+<!-- 正在播放 sheet：全屏播放页，下拖或收起按钮关闭 -->
+<div class="np-scrim" data-scrim aria-hidden="true"></div>
+<section class="np-sheet" data-np-sheet role="dialog" aria-modal="true" aria-label={t("npNowPlaying")} data-closed>
+	<div class="np-grab" aria-hidden="true"><span></span></div>
+	<header class="np-head">
+		<span class="np-cap">{t("npNowPlaying")}</span>
+		<button class="np-close" type="button" data-sheet-close aria-label={t("npCollapse")}>
+			<Icon name="mdi:chevron-down" />
+		</button>
+	</header>
+	<div class="np-body">
+		<div class="np-cover is-empty" data-np-cover>
+			<img data-np-img alt="" width="600" height="600" decoding="async" />
+			<span class="np-cover-fallback">
+				<Icon name="material-symbols:music-note-rounded" />
+				{t("musicNoCover")}
+			</span>
+		</div>
+		<h2 class="np-title" data-np-title>{t("musicNoPlaying")}</h2>
+		<p class="np-artist" data-np-artist></p>
+
+		<div class="np-progress-row">
+			<span class="np-time" data-np-time-current>0:00</span>
+			<div
+				class="np-progress"
+				role="slider"
+				aria-label={t("musicProgress")}
+				aria-valuemin="0"
+				aria-valuemax="100"
+				aria-valuenow="0"
+				data-np-progress
+			>
+				<span class="np-track"><span class="np-bar" data-np-bar></span><span class="np-thumb" data-np-thumb></span></span>
+			</div>
+			<span class="np-time np-time-total" data-np-time-total>0:00</span>
+		</div>
+
+		<div class="np-transport">
+			<button class="np-btn" type="button" data-np-mode aria-label={t("playModeList")}>
+				<Icon name="material-symbols:repeat-rounded" class="icon-mode-list" />
+				<Icon name="material-symbols:repeat-one-rounded" class="icon-mode-one is-hidden" />
+				<Icon name="material-symbols:shuffle-rounded" class="icon-mode-shuffle is-hidden" />
+			</button>
+			<button class="np-btn" type="button" data-np-prev aria-label={t("musicPrev")}>
+				<Icon name="material-symbols:skip-previous-rounded" />
+			</button>
+			<button class="np-btn np-play" type="button" data-np-play aria-label={t("musicPlay")}>
+				<Icon name="material-symbols:play-arrow-rounded" class="icon-play" />
+				<Icon name="material-symbols:pause-rounded" class="icon-pause is-hidden" />
+			</button>
+			<button class="np-btn" type="button" data-np-next aria-label={t("musicNext")}>
+				<Icon name="material-symbols:skip-next-rounded" />
+			</button>
+		</div>
+
+		<div class="np-volume">
+			<button class="np-btn" type="button" data-np-mute aria-label={t("musicVolume")} aria-pressed="false">
+				<Icon name="material-symbols:volume-up-rounded" class="icon-vol-on" />
+				<Icon name="material-symbols:volume-off-rounded" class="icon-vol-off is-hidden" />
+			</button>
+			<input
+				class="np-vol"
+				type="range"
+				min="0"
+				max="100"
+				value="60"
+				aria-label={t("musicVolume")}
+				data-np-volume
+			/>
+		</div>
+
+		<div class="np-tabs" role="tablist" aria-label="面板">
+			<button class="np-tab is-active" type="button" role="tab" aria-selected="true" data-tab="lyrics">
+				{t("musicLyrics")}
+			</button>
+			<button class="np-tab" type="button" role="tab" aria-selected="false" data-tab="playlist">
+				{t("musicPlaylist")}
+			</button>
+		</div>
+
+		<div class="np-panel is-active" data-panel="lyrics">
+			<div class="np-lyrics custom-scrollbar" role="listbox" aria-label={t("musicLyrics")} data-lyrics-list>
+				<p class="np-hint">{t("musicNoLyrics")}</p>
+			</div>
+		</div>
+		<div class="np-panel" data-panel="playlist">
+			<div
+				class="np-playlist custom-scrollbar"
+				role="listbox"
+				aria-label={t("musicPlaylist")}
+				aria-busy="true"
+				data-playlist-list
+			>
+				<div class="np-skeleton" aria-hidden="true">
+					<span class="np-skeleton-row"></span>
+					<span class="np-skeleton-row"></span>
+					<span class="np-skeleton-row"></span>
+					<span class="np-skeleton-row"></span>
+					<span class="np-skeleton-row"></span>
+					<span class="np-skeleton-row"></span>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<!-- 歌单条目结构：控制器按批克隆填充 -->
+<template data-playlist-template>
+	<button class="np-item" type="button" role="option">
+		<span class="np-item-index"></span>
+		<img class="np-item-cover" alt="" loading="lazy" decoding="async" width="40" height="40" />
+		<span class="np-item-text">
+			<span class="np-item-name"></span>
+			<span class="np-item-artist"></span>
+		</span>
+	</button>
+</template>
+
+<script>
+	import { setupSheet } from "@/utils/sheet-controller";
+
+	// 单页站点，模块脚本只执行一次；data 标记兜底防重复挂载
+	const sheet = document.querySelector<HTMLElement>("[data-np-sheet]");
+	if (sheet && sheet.dataset.ready !== "true") {
+		sheet.dataset.ready = "true";
+		setupSheet();
+	}
+</script>

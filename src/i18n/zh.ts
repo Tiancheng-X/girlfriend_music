@@ -22,6 +22,9 @@ export const ZH = {
 	playModeList: "列表循环",
 	playModeSingle: "单曲循环",
 	playModeShuffle: "随机播放",
+	npNowPlaying: "正在播放",
+	npCollapse: "收起",
+	musicQueue: "播放队列",
 } as const;
 
 export type I18nKey = keyof typeof ZH;

@@ -1,12 +1,19 @@
 # girlfriend_music
 
-只有「听歌」一件事的极简 Astro 站点。悬浮胶囊播放器移植自 my-blog 博客
-（`MusicManager` 播放引擎 + `MusicPlayer` 三态胶囊 UI），去掉了 i18n、Swup、Tailwind、
-内容集合、three.js 可视化等一切与听歌无关的依赖。
+只有「听歌」一件事的极简 Astro 站点。界面按 apple-design-zh 规范重构为
+Apple Music 风：大播放器（布局 A「沉浸」）+ 底部 mini-player + 全屏正在播放
+sheet，手势动效由 Motion 弹簧驱动（可中断、速度交接、动量投影）。
 
 - 播放引擎：`src/components/MusicManager.astro`，挂载后暴露 `window.__fireflyMusic` 单例
-- 胶囊 UI：`src/components/MusicPlayer.astro` + `src/utils/music-player-controller.ts`
+- 全局外壳：`src/components/MiniPlayer.astro`（氛围背景 + mini + sheet），
+  控制器 `src/utils/sheet-controller.ts`
+- 首页主播放区：`src/components/BigPlayer.astro` + `src/utils/big-player-controller.ts`
+- 手势/弹簧工具：`src/utils/gesture.ts`（弹簧参数、橡皮筋、动量投影、press 反馈）
 - 歌单来源：Meting API（默认网易云歌单，见 `src/config/musicConfig.ts`）
+
+2026-10 重构的决策与验收记录在 `.scratch/apple-ui-rebuild/`（wayfinder 地图），
+域词汇表见 `CONTEXT.md`；旧版悬浮三态胶囊已退役（原型存档于
+`prototype/apple-ui-rebuild` 分支）。
 
 ## 本地开发
 
@@ -36,11 +43,12 @@ pnpm check    # TypeScript / Astro 类型检查
 
 ```
 src/
-├── components/    MusicManager.astro / MusicPlayer.astro / Icon.astro
+├── components/    MusicManager.astro / BigPlayer.astro / MiniPlayer.astro / Icon.astro
 ├── config/        musicConfig.ts（歌单、音量、播放模式）
 ├── i18n/          zh.ts（中文文案常量 + t()）
-├── layouts/       Base.astro（暗色主题根布局，挂载播放引擎）
+├── layouts/       Base.astro（Apple Music 暗色 tokens，挂载引擎与播放器外壳）
 ├── pages/         index.astro
-├── styles/        music-player.css
-└── utils/         music-player-controller.ts、url.ts
+├── styles/        player.css（氛围/mini/sheet）、big-player.css（大播放器）
+├── types/         global.d.ts（__fireflyMusic 类型）
+└── utils/         sheet-controller.ts、big-player-controller.ts、gesture.ts、url.ts
 ```

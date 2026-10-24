@@ -456,7 +456,11 @@ const managerConfigStr = JSON.stringify({
         }
     };
 
-    // 本站没有 Swup / 客户端路由，页面只在首次加载时安装一次，
-    // 因此不再需要导航后的 resync 钩子（resync 仍保留在公开 API 上备用）。
+	// 本站没有 Swup / 客户端路由，页面只在首次加载时安装一次，
+	// 因此不再需要导航后的 resync 钩子（resync 仍保留在公开 API 上备用）。
+
+	// 页面打开即拉取歌单并装载第一首（loadTrack(startIndex, false) 只设置 src 不出声，
+	// 不受浏览器自动播放策略限制），封面/歌名/歌手随即就位；真正的播放仍需用户点击。
+	init();
 })();
 </script>

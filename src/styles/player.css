@@ -3,7 +3,26 @@
    玻璃层之间保持兄弟关系不嵌套；Safari ≤17 需要 -webkit- 前缀；
    prefers-reduced-transparency 仅 Chromium 生效，主降级走 @supports not + prefers-contrast。 */
 
-/* ── 氛围背景（封面本体做光晕，双层交叉淡入） ───────────── */
+/* ── AMLL 流体背景挂载点 + CSS 光晕降级层 ────────────────── */
+.amll-bg {
+	position: fixed;
+	inset: 0;
+	z-index: 0;
+	overflow: hidden;
+}
+
+.amll-bg canvas {
+	width: 100%;
+	height: 100%;
+	display: block;
+}
+
+/* AMLL 背景激活后，CSS 光晕退场 */
+html.amll-bg-live .np-ambient {
+	display: none;
+}
+
+/* ── 氛围背景（封面本体做光晕，双层交叉淡入；AMLL 失败时的降级） ── */
 .np-ambient {
 	position: fixed;
 	inset: -12%;
@@ -24,6 +43,47 @@
 	background-image:
 		radial-gradient(60% 50% at 25% 15%, rgba(56, 130, 246, 0.28), transparent 70%),
 		radial-gradient(55% 45% at 78% 85%, rgba(147, 51, 234, 0.22), transparent 70%);
+}
+
+/* ── AMLL BouncingSlider（进度/音量共用，官方样式复刻） ───── */
+[data-progress-slider],
+[data-volume-slider],
+[data-np-progress-slider],
+[data-np-volume-slider] {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+}
+
+.amll-nps {
+	display: flex;
+	align-items: center;
+	justify-content: stretch;
+	min-height: 24px;
+	flex: 1;
+	min-width: 0;
+}
+
+.amll-nps-inner {
+	flex: 1;
+	width: 100%;
+	height: 20px;
+	background-color: rgba(255, 255, 255, 0.15);
+	border-radius: 100px;
+}
+
+.amll-nps-thumb {
+	width: 100%;
+	height: 100%;
+	background-color: #fff;
+	opacity: 0.4;
+	transform-origin: left center;
+	transform: scaleX(0);
+}
+
+.amll-nps > svg {
+	opacity: 0.5;
+	flex: none;
 }
 
 /* ── mini-player ──────────────────────────────────────────── */
@@ -152,25 +212,7 @@
 	font-size: 18px;
 }
 
-.mini-progress {
-	position: absolute;
-	left: 20px;
-	right: 20px;
-	top: 0;
-	height: 2px;
-	border-radius: 1px;
-	overflow: hidden;
-	background: rgba(255, 255, 255, 0.1);
-}
-
-.mini-progress span {
-	display: block;
-	height: 100%;
-	width: 0;
-	background: var(--am-accent);
-}
-
-/* ── 正在播放 sheet ───────────────────────────────────────── */
+/* ── 队列 sheet ────────────────────────────────────────────── */
 .np-scrim {
 	position: fixed;
 	inset: 0;
@@ -257,68 +299,8 @@
 	padding: 4px 24px 20px;
 }
 
-.np-cover {
-	position: relative;
-	width: min(56%, 300px);
-	aspect-ratio: 1;
-	border-radius: 14px;
-	overflow: hidden;
-	flex: none;
-	background: var(--am-surface);
-	box-shadow: var(--am-shadow);
-}
 
-.np-cover img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	display: block;
-}
 
-.np-cover.is-empty img {
-	display: none;
-}
-
-.np-cover-fallback {
-	position: absolute;
-	inset: 0;
-	display: none;
-	place-items: center;
-	align-content: center;
-	gap: 8px;
-	color: var(--am-text-3);
-	font-size: 13px;
-}
-
-.np-cover.is-empty .np-cover-fallback {
-	display: grid;
-}
-
-.np-cover-fallback svg {
-	font-size: 34px;
-	margin-bottom: 6px;
-}
-
-.np-title {
-	margin: 2px 0 0;
-	max-width: 100%;
-	font-size: 21px;
-	font-weight: 600;
-	letter-spacing: -0.01em;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.np-artist {
-	margin: 0;
-	max-width: 100%;
-	font-size: 14px;
-	color: var(--am-text-2);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
 
 .np-progress-row {
 	width: 100%;
@@ -340,45 +322,6 @@
 	text-align: right;
 }
 
-.np-progress {
-	position: relative;
-	flex: 1;
-	height: 24px;
-	display: flex;
-	align-items: center;
-	touch-action: none;
-	cursor: pointer;
-}
-
-.np-track {
-	position: relative;
-	width: 100%;
-	height: 4px;
-	border-radius: 2px;
-	background: rgba(255, 255, 255, 0.18);
-}
-
-.np-bar {
-	position: absolute;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	width: 0;
-	border-radius: 2px;
-	background: var(--am-accent);
-}
-
-.np-thumb {
-	position: absolute;
-	top: 50%;
-	left: 0;
-	width: 12px;
-	height: 12px;
-	border-radius: 50%;
-	background: #fff;
-	transform: translate(-50%, -50%);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-}
 
 .np-transport {
 	display: flex;
@@ -398,15 +341,44 @@
 	color: var(--am-text);
 	font-size: 22px;
 	cursor: pointer;
+	transition: background-color 0.3s;
+}
+
+.np-btn > * {
+	transition: transform 0.5s;
+	transform-origin: center;
+}
+
+.np-btn:hover,
+.np-btn:active {
+	background-color: rgba(255, 255, 255, 0.13);
+}
+
+.np-btn.is-bouncing > * {
+	animation: np-pressed 0.7s;
+	animation-composition: accumulate;
+}
+
+@keyframes np-pressed {
+	0% {
+		scale: 1;
+	}
+
+	20% {
+		scale: 0.85;
+	}
+
+	50% {
+		scale: 1.1;
+	}
+
+	100% {
+		scale: 1;
+	}
 }
 
 .np-play {
-	width: 56px;
-	height: 56px;
-	background: var(--am-accent);
-	color: #fff;
-	font-size: 26px;
-	box-shadow: 0 10px 24px rgba(250, 45, 72, 0.35);
+	font-size: 24px;
 }
 
 .np-volume {
@@ -424,82 +396,16 @@
 	color: var(--am-text-2);
 }
 
-.np-vol {
-	flex: 1;
-	height: 24px;
-	accent-color: var(--am-accent);
-	cursor: pointer;
-}
 
-.np-tabs {
-	display: flex;
-	gap: 4px;
-	background: rgba(255, 255, 255, 0.07);
-	border-radius: 999px;
-	padding: 4px;
-}
 
-.np-tab {
-	border: 0;
-	background: transparent;
-	color: var(--am-text-2);
-	border-radius: 999px;
-	padding: 6px 18px;
-	font-size: 13px;
-	cursor: pointer;
-	transition:
-		background 0.2s,
-		color 0.2s;
-}
-
-.np-tab.is-active {
-	background: rgba(255, 255, 255, 0.16);
-	color: var(--am-text);
-}
-
-.np-panel {
-	display: none;
-	width: 100%;
-	max-width: 460px;
-	flex: 1;
-	min-height: 0;
-}
-
-.np-panel.is-active {
-	display: block;
-}
-
-.np-lyrics,
 .np-playlist {
-	height: 100%;
+	flex: 1;
+	min-height: 120px;
+	height: auto;
 	overflow-y: auto;
 	position: relative;
 	padding: 6px 4px;
 	touch-action: pan-y;
-}
-
-.np-lyrics {
-	display: flex;
-	flex-direction: column;
-	gap: 14px;
-}
-
-.np-lrc {
-	border: 0;
-	background: none;
-	color: var(--am-text-3);
-	font-size: 15px;
-	text-align: left;
-	padding: 0;
-	line-height: 1.5;
-	cursor: pointer;
-	transition: color 0.25s;
-}
-
-.np-lrc.is-active {
-	color: var(--am-text);
-	font-weight: 600;
-	font-size: 16.5px;
 }
 
 .np-hint {
@@ -601,22 +507,10 @@
 		padding-inline: 20px;
 	}
 
-	.np-cover {
-		width: min(60%, 280px);
-	}
-
-	.np-title {
-		font-size: 18px;
-	}
-
 	.np-transport {
 		gap: 26px;
 	}
 
-	.np-play {
-		width: 52px;
-		height: 52px;
-	}
 }
 
 /* ── 降级（研究票据 02 §3.4 的三层基线） ─────────────────── */
@@ -656,9 +550,7 @@
 		height: 60%;
 	}
 
-	.np-ambient,
-	.np-tab,
-	.np-lrc {
+	.np-ambient {
 		transition: none;
 	}
 

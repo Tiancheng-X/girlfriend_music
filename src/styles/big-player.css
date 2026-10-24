@@ -1,5 +1,6 @@
-/* 重写：首页大播放器（布局 A「沉浸」）。
-   桌面：垂直居中沉浸列；移动端（≤680px）：封面贴顶、控制区沉底左对齐（票据 05 定稿）。 */
+/* 重写（v3，AMLL 沉浸式）：大播放器即整页播放体验。
+   桌面：双栏（左封面控制 / 右 AMLL 歌词）；移动端：上下堆叠。
+   背景是 AMLL 流体渐变 canvas（MiniPlayer 挂载），本文件只管前景布局。 */
 
 .big-player {
 	position: relative;
@@ -10,27 +11,40 @@
 }
 
 .bp-stage {
+	display: grid;
+	grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+	grid-template-rows: minmax(0, 1fr);
+	gap: clamp(28px, 5vw, 72px);
+	align-items: stretch;
+	max-width: 1240px;
+	margin: 0 auto;
+	box-sizing: border-box;
+	/* 高度锁死在视口内：歌词列内部滚动，左列内容垂直居中可见 */
+	height: calc(100svh - 140px);
+	padding: 12px 48px 0;
+}
+
+.bp-side {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 18px;
-	max-width: 560px;
-	margin: 0 auto;
-	min-height: calc(100svh - 190px);
-	box-sizing: border-box;
-	padding: 24px 32px calc(110px + env(safe-area-inset-bottom));
+	gap: 14px;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
 }
 
 .bp-cover {
 	position: relative;
-	width: min(100%, 320px);
+	width: min(100%, 280px);
 	aspect-ratio: 1;
+	max-height: 46svh;
 	border-radius: 14px;
 	overflow: hidden;
 	flex: none;
 	background: var(--am-surface);
-	box-shadow: var(--am-shadow);
+	box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
 }
 
 .bp-cover img {
@@ -88,13 +102,6 @@
 	color: var(--am-text-2);
 }
 
-.bp-lyric {
-	margin: 6px 0 0;
-	min-height: 22px;
-	font-size: 14.5px;
-	color: var(--am-text-2);
-}
-
 .bp-progress-row {
 	width: 100%;
 	display: flex;
@@ -112,46 +119,6 @@
 
 .bp-time-total {
 	text-align: right;
-}
-
-.bp-progress {
-	position: relative;
-	flex: 1;
-	height: 24px;
-	display: flex;
-	align-items: center;
-	touch-action: none;
-	cursor: pointer;
-}
-
-.bp-track {
-	position: relative;
-	width: 100%;
-	height: 4px;
-	border-radius: 2px;
-	background: rgba(255, 255, 255, 0.18);
-}
-
-.bp-bar {
-	position: absolute;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	width: 0;
-	border-radius: 2px;
-	background: var(--am-accent);
-}
-
-.bp-thumb {
-	position: absolute;
-	top: 50%;
-	left: 0;
-	width: 12px;
-	height: 12px;
-	border-radius: 50%;
-	background: #fff;
-	transform: translate(-50%, -50%);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .bp-transport {
@@ -178,19 +145,44 @@
 	color: var(--am-text);
 	font-size: 22px;
 	cursor: pointer;
+	transition: background-color 0.3s;
 }
 
-.bp-btn-mode.is-alt {
-	color: var(--am-accent);
+.bp-btn > * {
+	transition: transform 0.5s;
+	transform-origin: center;
+}
+
+.bp-btn:hover,
+.bp-btn:active {
+	background-color: rgba(255, 255, 255, 0.13);
+}
+
+.bp-btn.is-bouncing > * {
+	animation: bp-pressed 0.7s;
+	animation-composition: accumulate;
+}
+
+@keyframes bp-pressed {
+	0% {
+		scale: 1;
+	}
+
+	20% {
+		scale: 0.85;
+	}
+
+	50% {
+		scale: 1.1;
+	}
+
+	100% {
+		scale: 1;
+	}
 }
 
 .bp-play {
-	width: 58px;
-	height: 58px;
-	background: var(--am-accent);
-	color: #fff;
-	font-size: 28px;
-	box-shadow: 0 10px 24px rgba(250, 45, 72, 0.35);
+	font-size: 24px;
 }
 
 .bp-volume {
@@ -207,13 +199,6 @@
 	color: var(--am-text-2);
 }
 
-.bp-vol {
-	flex: 1;
-	height: 24px;
-	accent-color: var(--am-accent);
-	cursor: pointer;
-}
-
 .bp-error {
 	margin: 0;
 	font-size: 14px;
@@ -221,51 +206,95 @@
 	text-align: center;
 }
 
-/* ── 移动端：封面贴顶、控制沉底（票据 05） ────────────────── */
-@media (max-width: 680px) {
+/* ── 歌词主舞台（自研逐行高亮列表） ───────────────────────── */
+.bp-lyrics {
+	position: relative;
+	min-height: 0;
+	/* 上下边缘渐隐，歌词像从流体里浮出来 */
+	-webkit-mask-image: linear-gradient(transparent, #000 7%, #000 93%, transparent);
+	mask-image: linear-gradient(transparent, #000 7%, #000 93%, transparent);
+	font-size: clamp(17px, 1.6vw, 22px);
+}
+
+.bp-lyrics-list {
+	height: 100%;
+	overflow-y: auto;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	width: 100%;
+	max-width: 720px;
+	margin: 0 auto;
+	box-sizing: border-box;
+	padding: 14% 12px;
+	touch-action: pan-y;
+}
+
+.bp-lrc {
+	border: 0;
+	background: none;
+	color: var(--am-text-3);
+	font-size: 1em;
+	text-align: left;
+	padding: 0;
+	line-height: 1.4;
+	cursor: pointer;
+	opacity: 0.85;
+	transition:
+		color 0.3s,
+		opacity 0.3s;
+}
+
+.bp-lrc:hover {
+	color: var(--am-text-2);
+}
+
+.bp-lrc.is-active {
+	color: var(--am-text);
+	font-weight: 600;
+	opacity: 1;
+}
+
+/* ── 移动端：上下堆叠，歌词占半屏 ─────────────────────────── */
+@media (max-width: 768px) {
 	.bp-stage {
-		justify-content: flex-start;
-		gap: 13px;
-		min-height: calc(100svh - 130px);
-		padding: 10px 24px calc(96px + env(safe-area-inset-bottom));
+		grid-template-columns: 1fr;
+		grid-template-rows: auto minmax(0, 1fr);
+		gap: 12px;
+		height: calc(100svh - 110px);
+		padding: 6px 20px 0;
+	}
+
+	.bp-side {
+		gap: 9px;
 	}
 
 	.bp-cover {
-		width: min(78%, 310px);
-		align-self: center;
-	}
-
-	.bp-meta {
-		margin-top: auto;
-		align-self: stretch;
-		text-align: left;
+		width: min(40%, 190px);
+		max-height: none;
 	}
 
 	.bp-title {
-		font-size: 21px;
-	}
-
-	.bp-lyric {
-		margin-top: 4px;
-		text-align: left;
+		font-size: 19px;
 	}
 
 	.bp-transport {
-		width: 100%;
-		justify-content: space-between;
-	}
-
-	.bp-core {
-		gap: 26px;
+		gap: 22px;
 	}
 
 	.bp-play {
-		width: 54px;
-		height: 54px;
+		width: 52px;
+		height: 52px;
 	}
 
 	.bp-volume {
 		display: none;
+	}
+
+	.bp-lyrics {
+		min-height: 0;
+		font-size: 19px;
 	}
 }
 
@@ -273,5 +302,10 @@
 	.bp-btn,
 	.bp-play {
 		transition: none;
+	}
+
+	.bp-lyrics {
+		-webkit-mask-image: none;
+		mask-image: none;
 	}
 }

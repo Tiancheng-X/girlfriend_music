@@ -1,6 +1,7 @@
 ---
-// 重写：大播放器（布局 A「沉浸」，票据 05 定稿）——大封面主导 + 氛围背景（在 MiniPlayer 挂载），
-// 传输控制 / 进度 / 音量；队列按钮交给 sheet-controller 的 [data-open-sheet] 打开正在播放页。
+// 重写（v3，AMLL 沉浸式）：桌面双栏——左封面+控制，右 AMLL 歌词主舞台；
+// 移动端上下堆叠。流体渐变背景与歌词引擎由 src/utils/amll.ts 提供，
+// 队列在 mini-player 的 sheet 里（MiniPlayer.astro）。
 import Icon from "@/components/Icon.astro";
 import { t } from "@/i18n/zh";
 import "@/styles/big-player.css";
@@ -8,68 +9,66 @@ import "@/styles/big-player.css";
 
 <section class="big-player" data-big-player role="region" aria-label={t("music")}>
 	<div class="bp-stage">
-		<div class="bp-cover is-empty" data-cover>
-			<img data-img alt="" width="600" height="600" decoding="async" />
-			<span class="bp-cover-fallback">
-				<Icon name="material-symbols:music-note-rounded" />
-				{t("musicNoCover")}
-			</span>
-		</div>
-
-		<div class="bp-meta">
-			<h2 class="bp-title" data-title>{t("musicNoPlaying")}</h2>
-			<p class="bp-artist" data-artist></p>
-			<p class="bp-lyric" data-lyric aria-live="polite"></p>
-		</div>
-
-		<div class="bp-progress-row">
-			<span class="bp-time" data-time-current>0:00</span>
-			<div
-				class="bp-progress"
-				role="slider"
-				aria-label={t("musicProgress")}
-				aria-valuemin="0"
-				aria-valuemax="100"
-				aria-valuenow="0"
-				data-progress
-			>
-				<span class="bp-track"><span class="bp-bar" data-bar></span><span class="bp-thumb" data-thumb></span></span>
+		<div class="bp-side">
+			<div class="bp-cover is-empty" data-cover>
+				<img data-img alt="" width="600" height="600" decoding="async" />
+				<span class="bp-cover-fallback">
+					<Icon name="material-symbols:music-note-rounded" />
+					{t("musicNoCover")}
+				</span>
 			</div>
-			<span class="bp-time bp-time-total" data-time-total>0:00</span>
+
+			<div class="bp-meta">
+				<h2 class="bp-title" data-title>{t("musicNoPlaying")}</h2>
+				<p class="bp-artist" data-artist></p>
+			</div>
+
+			<div class="bp-progress-row">
+				<span class="bp-time" data-time-current>0:00</span>
+				<div class="bp-slider" data-progress-slider></div>
+				<span class="bp-time bp-time-total" data-time-total>-0:00</span>
+			</div>
+
+			<div class="bp-transport">
+				<button class="bp-btn bp-btn-mode" type="button" data-mode aria-label={t("playModeList")}>
+					<Icon name="material-symbols:repeat-rounded" class="icon-mode-list" />
+					<Icon name="material-symbols:repeat-one-rounded" class="icon-mode-one is-hidden" />
+					<Icon name="material-symbols:shuffle-rounded" class="icon-mode-shuffle is-hidden" />
+				</button>
+				<span class="bp-core">
+					<button class="bp-btn" type="button" data-prev aria-label={t("musicPrev")}>
+						<Icon name="material-symbols:skip-previous-rounded" />
+					</button>
+					<button class="bp-btn bp-play" type="button" data-play aria-label={t("musicPlay")}>
+						<Icon name="material-symbols:play-arrow-rounded" class="icon-play" />
+						<Icon name="material-symbols:pause-rounded" class="icon-pause is-hidden" />
+					</button>
+					<button class="bp-btn" type="button" data-next aria-label={t("musicNext")}>
+						<Icon name="material-symbols:skip-next-rounded" />
+					</button>
+				</span>
+				<button class="bp-btn" type="button" data-open-sheet aria-label={t("musicQueue")}>
+					<Icon name="mdi:playlist-music" />
+				</button>
+			</div>
+
+			<div class="bp-volume">
+				<button class="bp-btn" type="button" data-mute aria-label={t("musicVolume")} aria-pressed="false">
+					<Icon name="material-symbols:volume-up-rounded" class="icon-vol-on" />
+					<Icon name="material-symbols:volume-off-rounded" class="icon-vol-off is-hidden" />
+				</button>
+				<div class="bp-vol-slider" data-volume-slider></div>
+			</div>
+
+			<p class="bp-error is-hidden" role="status" data-error></p>
 		</div>
 
-		<div class="bp-transport">
-			<button class="bp-btn bp-btn-mode" type="button" data-mode aria-label={t("playModeList")}>
-				<Icon name="material-symbols:repeat-rounded" class="icon-mode-list" />
-				<Icon name="material-symbols:repeat-one-rounded" class="icon-mode-one is-hidden" />
-				<Icon name="material-symbols:shuffle-rounded" class="icon-mode-shuffle is-hidden" />
-			</button>
-			<span class="bp-core">
-				<button class="bp-btn" type="button" data-prev aria-label={t("musicPrev")}>
-					<Icon name="material-symbols:skip-previous-rounded" />
-				</button>
-				<button class="bp-btn bp-play" type="button" data-play aria-label={t("musicPlay")}>
-					<Icon name="material-symbols:play-arrow-rounded" class="icon-play" />
-					<Icon name="material-symbols:pause-rounded" class="icon-pause is-hidden" />
-				</button>
-				<button class="bp-btn" type="button" data-next aria-label={t("musicNext")}>
-					<Icon name="material-symbols:skip-next-rounded" />
-				</button>
-			</span>
-			<button class="bp-btn" type="button" data-open-sheet aria-label={t("musicQueue")}>
-				<Icon name="mdi:playlist-music" />
-			</button>
+		<!-- 歌词主舞台：自研逐行弹簧高亮列表（AMLL LyricPlayer 在双版本上存在渲染缺陷，见 amll.ts 注释） -->
+		<div class="bp-lyrics" data-lyrics-stage aria-label={t("musicLyrics")}>
+			<div class="bp-lyrics-list custom-scrollbar" role="listbox" aria-label={t("musicLyrics")} data-lyrics-list>
+				<p class="np-hint" data-lyrics-hint>{t("musicNoLyrics")}</p>
+			</div>
 		</div>
-
-		<div class="bp-volume">
-			<button class="bp-btn" type="button" data-mute aria-label={t("musicVolume")} aria-pressed="false">
-				<Icon name="material-symbols:volume-up-rounded" class="icon-vol-on" />
-				<Icon name="material-symbols:volume-off-rounded" class="icon-vol-off is-hidden" />
-			</button>
-			<input class="bp-vol" type="range" min="0" max="100" value="60" aria-label={t("musicVolume")} data-volume />
-		</div>
-
-		<p class="bp-error is-hidden" role="status" data-error></p>
 	</div>
 </section>
 

@@ -1,5 +1,6 @@
 ---
-// 重写：首页即整站 —— 大播放器（布局 A）占主位，全局 mini-player + 正在播放 sheet 由 Base 挂载。
+// 重写（v3，AMLL 沉浸式）：整页即播放体验——页头 + 沉浸式大播放器（AMLL 歌词主舞台），
+// 流体渐变背景由 MiniPlayer 挂载的 AMLL canvas 提供，铺满全页。
 import Base from "@/layouts/Base.astro";
 import BigPlayer from "@/components/BigPlayer.astro";
 ---
@@ -17,15 +18,18 @@ import BigPlayer from "@/components/BigPlayer.astro";
 		position: relative;
 		z-index: 1;
 		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
 		width: 100%;
-		max-width: 68rem;
+		max-width: 1320px;
 		margin: 0 auto;
-		padding: clamp(1.25rem, 5vw, 2.5rem) clamp(1rem, 4vw, 2rem) 0;
+		padding: clamp(0.75rem, 2.5vw, 1.5rem) clamp(1rem, 4vw, 2.5rem) 0;
+		min-height: 100svh;
 	}
 
 	.page__title {
-		margin: 0 0 clamp(1rem, 3vw, 1.75rem);
-		font-size: clamp(1.5rem, 4vw, 2.25rem);
+		margin: 0 0 clamp(0.5rem, 2vw, 1rem);
+		font-size: clamp(1.25rem, 3vw, 1.75rem);
 		font-weight: 700;
 		letter-spacing: -0.02em;
 		line-height: 1.1;

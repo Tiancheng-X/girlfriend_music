@@ -1,8 +1,8 @@
 // 重写：首页大播放器（布局 A）的视图控制器。
 // 氛围背景与 mini/sheet 由 sheet-controller 负责；本模块只同步大播放器自身 UI：
-// 封面/曲名/当前歌词行预览、进度 1:1 拖拽、音量、播放模式，以及 fm:* 事件消费。
+// 封面/曲名、进度条与音量（AMLL BouncingSlider）、播放模式、歌词面板、fm:* 事件消费。
 import { t } from "@/i18n/zh";
-import { bindPressFeedback, bindScrub } from "./gesture";
+import { bindMediaButtonBounce, createBouncingSlider } from "./bouncing-slider";
 
 function formatTime(seconds: number): string {
 	if (!seconds || Number.isNaN(seconds)) return "0:00";
@@ -28,12 +28,9 @@ export function setupBigPlayer(): void {
 		coverImg: $<HTMLImageElement>("[data-img]"),
 		title: $(".bp-title"),
 		artist: $(".bp-artist"),
-		lyric: $(".bp-lyric"),
 		timeCur: $("[data-time-current]"),
 		timeTotal: $("[data-time-total]"),
-		progress: $(".bp-progress"),
-		bar: $("[data-bar]"),
-		thumb: $("[data-thumb]"),
+		progressSliderHost: $("[data-progress-slider]"),
 		mode: $<HTMLButtonElement>("[data-mode]"),
 		iconModeList: $(".icon-mode-list"),
 		iconModeOne: $(".icon-mode-one"),
@@ -46,19 +43,63 @@ export function setupBigPlayer(): void {
 		mute: $<HTMLButtonElement>("[data-mute]"),
 		iconVolOn: $(".icon-vol-on"),
 		iconVolOff: $(".icon-vol-off"),
-		volume: $<HTMLInputElement>("[data-volume]"),
+		volSliderHost: $("[data-volume-slider]"),
 		error: $("[data-error]"),
+		lyricsList: $("[data-lyrics-list]"),
 	};
 
 	const critical: (Element | null)[] = [
-		els.cover, els.coverImg, els.title, els.artist, els.lyric, els.timeCur, els.timeTotal,
-		els.progress, els.bar, els.thumb, els.mode, els.iconModeList, els.iconModeOne,
+		els.cover, els.coverImg, els.title, els.artist, els.timeCur, els.timeTotal,
+		els.progressSliderHost, els.mode, els.iconModeList, els.iconModeOne,
 		els.iconModeShuffle, els.prev, els.play, els.iconPlay, els.iconPause, els.next,
-		els.mute, els.iconVolOn, els.iconVolOff, els.volume, els.error,
+		els.mute, els.iconVolOn, els.iconVolOff, els.volSliderHost, els.error, els.lyricsList,
 	];
 	if (critical.some((el) => el === null)) return;
 
 	let seeking = false;
+	let lastDurationSec = 0;
+
+	function getAudio(): HTMLAudioElement | null {
+		return document.getElementById("firefly-music-audio") as HTMLAudioElement | null;
+	}
+
+	function remainingStr(durationSec: number, currentSec: number): string {
+		return durationSec > 0 ? `-${formatTime(durationSec - currentSec)}` : "0:00";
+	}
+
+	// ── 进度条 / 音量（AMLL BouncingSlider） ─────────────────
+	const progressSlider = createBouncingSlider({
+		max: 1,
+		getMax: () => (mgr.getState().duration || 0) * 1000,
+		isPlaying: () => getAudio()?.paused === false,
+		onSeek: (ms, commit) => {
+			const durationSec = mgr.getState().duration || 0;
+			if (durationSec <= 0) return;
+			const sec = ms / 1000;
+			if (els.timeCur) els.timeCur.textContent = formatTime(sec);
+			if (els.timeTotal) els.timeTotal.textContent = remainingStr(durationSec, sec);
+			if (commit) mgr.seekToTime(sec);
+		},
+		onSeeking: (s) => {
+			seeking = s;
+		},
+	});
+	els.progressSliderHost!.appendChild(progressSlider.el);
+
+	const volumeSlider = createBouncingSlider({
+		max: 1,
+		isPlaying: () => false,
+		changeOnDrag: true,
+		onSeek: (v) => {
+			mgr.setVolume(v);
+		},
+	});
+	els.volSliderHost!.appendChild(volumeSlider.el);
+
+	let currentLrcIndex = -1;
+	let isUserScrollingLyrics = false;
+	let lyricsScrollTimer: number | null = null;
+	const LYRICS_SCROLL_RESUME_MS = 3000;
 
 	function ensureInit(): void {
 		if (mgr.getState().initialized) return;
@@ -84,22 +125,16 @@ export function setupBigPlayer(): void {
 	}
 
 	function updateVolumeUI(volume: number, isMuted: boolean): void {
-		const pct = isMuted ? 0 : volume * 100;
-		if (els.volume && document.activeElement !== els.volume) {
-			els.volume.value = String(Math.round(pct));
-		}
 		const muted = isMuted || volume === 0;
+		volumeSlider.setValue(volume);
 		els.iconVolOn?.classList.toggle("is-hidden", muted);
 		els.iconVolOff?.classList.toggle("is-hidden", !muted);
 		els.mute?.setAttribute("aria-pressed", String(muted));
 	}
 
-	function updateProgressUI(progress: number, currentStr: string, durationStr: string): void {
-		if (els.bar) els.bar.style.width = `${progress}%`;
-		if (els.thumb) els.thumb.style.left = `${progress}%`;
-		els.progress?.setAttribute("aria-valuenow", Math.round(progress).toString());
+	function updateProgressUI(currentStr: string, remaining: string): void {
 		if (els.timeCur) els.timeCur.textContent = currentStr;
-		if (els.timeTotal) els.timeTotal.textContent = durationStr;
+		if (els.timeTotal) els.timeTotal.textContent = remaining;
 	}
 
 	function updateTrackUI(track: { name: string; artist: string; pic?: string } | null): void {
@@ -117,14 +152,7 @@ export function setupBigPlayer(): void {
 			els.coverImg.alt = `${track.name} - ${track.artist}`;
 			els.cover?.classList.toggle("is-empty", !track.pic);
 		}
-		if (els.lyric) els.lyric.textContent = "";
-		updateProgressUI(0, "0:00", "0:00");
-	}
-
-	function updateLyricPreview(lyrics: Array<{ time: number; text: string }>, index: number): void {
-		if (!els.lyric) return;
-		const line = index >= 0 && index < lyrics.length ? lyrics[index] : undefined;
-		els.lyric.textContent = line ? line.text : "";
+		updateProgressUI("0:00", "0:00");
 	}
 
 	function showError(message: string): void {
@@ -137,29 +165,7 @@ export function setupBigPlayer(): void {
 		els.error?.classList.add("is-hidden");
 	}
 
-	// ── 拖拽（进度 1:1，提交才 seek）与音量 ──────────────────
-	bindScrub(
-		els.progress!,
-		(ratio) => {
-			seeking = true;
-			const duration = mgr.getState().duration || 0;
-			updateProgressUI(ratio * 100, formatTime(ratio * duration), els.timeTotal?.textContent ?? "0:00");
-		},
-		(ratio) => {
-			seeking = false;
-			mgr.seek(ratio);
-		},
-		signal,
-	);
-
-	els.volume?.addEventListener(
-		"input",
-		() => {
-			mgr.setVolume(Number.parseInt(els.volume?.value ?? "60", 10) / 100);
-		},
-		{ signal },
-	);
-
+	// ── 按钮与音量静音 ────────────────────────────────────────
 	els.play?.addEventListener(
 		"click",
 		() => {
@@ -195,6 +201,94 @@ export function setupBigPlayer(): void {
 		text: string;
 	}
 
+	// ── 歌词列表（自研逐行高亮；AMLL LyricPlayer 存在渲染缺陷，见 amll.ts 注释） ──
+	function renderLyricsUI(lyrics: LyricLine[], status: string): void {
+		const list = els.lyricsList;
+		if (!list) return;
+		list.innerHTML = "";
+		const placeholder = (text: string): void => {
+			const el = document.createElement("p");
+			el.className = "np-hint";
+			el.textContent = text;
+			list.appendChild(el);
+		};
+		if (status === "loading") {
+			placeholder(t("musicLoadingLyrics"));
+			return;
+		}
+		if (status === "failed") {
+			placeholder(t("musicFailedLyrics"));
+			return;
+		}
+		if (lyrics.length === 0) {
+			placeholder(t("musicNoLyrics"));
+			return;
+		}
+		lyrics.forEach((line, index) => {
+			const lineEl = document.createElement("button");
+			lineEl.type = "button";
+			lineEl.className = "bp-lrc";
+			lineEl.textContent = line.text;
+			lineEl.dataset.index = index.toString();
+			lineEl.setAttribute("role", "option");
+			lineEl.addEventListener(
+				"click",
+				() => {
+					mgr.seekToTime(line.time);
+				},
+				{ signal },
+			);
+			list.appendChild(lineEl);
+		});
+		currentLrcIndex = -1;
+		updateLrcHighlight(mgr.getState().currentLrcIndex, true);
+	}
+
+	function updateLrcHighlight(index: number, force = false): void {
+		if (index === currentLrcIndex && !force) return;
+		currentLrcIndex = index;
+		const list = els.lyricsList;
+		if (!list) return;
+		list.querySelectorAll<HTMLElement>(".bp-lrc").forEach((line, i) => {
+			line.classList.toggle("is-active", i === index);
+		});
+		if (index !== -1 && !isUserScrollingLyrics) {
+			const line = list.querySelector<HTMLElement>(`.bp-lrc[data-index="${index}"]`);
+			if (line) {
+				list.scrollTo({
+					top: line.offsetTop - list.clientHeight / 2 + line.offsetHeight / 2,
+					behavior: "smooth",
+				});
+			}
+		}
+	}
+
+	function resumeLyricsAutoScroll(): void {
+		if (lyricsScrollTimer !== null) window.clearTimeout(lyricsScrollTimer);
+		lyricsScrollTimer = window.setTimeout(() => {
+			lyricsScrollTimer = null;
+			isUserScrollingLyrics = false;
+			updateLrcHighlight(mgr.getState().currentLrcIndex, true);
+		}, LYRICS_SCROLL_RESUME_MS);
+	}
+
+	els.lyricsList?.addEventListener(
+		"wheel",
+		() => {
+			isUserScrollingLyrics = true;
+			resumeLyricsAutoScroll();
+		},
+		{ passive: true, signal },
+	);
+	els.lyricsList?.addEventListener(
+		"touchstart",
+		() => {
+			isUserScrollingLyrics = true;
+			resumeLyricsAutoScroll();
+		},
+		{ passive: true, signal },
+	);
+
 	on<{ playlist: TrackInfo[]; playMode: number; volume: number; isMuted: boolean }>("fm:init", (d) => {
 		hideError();
 		if (d.playlist.length > 0) {
@@ -207,16 +301,23 @@ export function setupBigPlayer(): void {
 
 	on<{ index: number; track: TrackInfo }>("fm:track", (d) => {
 		hideError();
+		lastDurationSec = 0;
+		progressSlider.setMax(1);
+		progressSlider.setValue(0);
 		updateTrackUI(d.track);
 	});
 
 	on<{ isPlaying: boolean }>("fm:play-state", (d) => {
 		updatePlayIcons(d.isPlaying);
+		progressSlider.setPlaying(d.isPlaying);
 	});
 
-	on<{ progress: number; currentTimeStr: string; durationStr: string }>("fm:time", (d) => {
+	on<{ currentTime: number; duration: number; currentTimeStr: string }>("fm:time", (d) => {
 		if (seeking) return;
-		updateProgressUI(d.progress, d.currentTimeStr, d.durationStr);
+		lastDurationSec = d.duration || 0;
+		progressSlider.setMax(lastDurationSec * 1000);
+		progressSlider.setValue(d.currentTime * 1000);
+		updateProgressUI(d.currentTimeStr, remainingStr(lastDurationSec, d.currentTime));
 	});
 
 	on<{ volume: number; isMuted: boolean }>("fm:volume", (d) => {
@@ -227,8 +328,12 @@ export function setupBigPlayer(): void {
 		updateModeUI(d.playMode);
 	});
 
+	on<{ lyrics: LyricLine[]; status: string }>("fm:lyrics", (d) => {
+		renderLyricsUI(d.lyrics, d.status);
+	});
+
 	on<{ index: number }>("fm:lrc-index", (d) => {
-		updateLyricPreview(mgr.getState().lyrics as LyricLine[], d.index);
+		updateLrcHighlight(d.index);
 	});
 
 	on<{ message: string }>("fm:error", (d) => {
@@ -248,11 +353,18 @@ export function setupBigPlayer(): void {
 		updatePlayIcons(s.isPlaying);
 		updateModeUI(s.playMode);
 		updateVolumeUI(s.volume, s.isMuted);
-		if (s.duration > 0) updateProgressUI(s.progress, s.currentTimeStr, s.durationStr);
-		updateLyricPreview(s.lyrics as LyricLine[], s.currentLrcIndex);
+		if (s.duration > 0) {
+			lastDurationSec = s.duration;
+			progressSlider.setMax(s.duration * 1000);
+			progressSlider.setValue(s.currentTime * 1000);
+		}
+		updateProgressUI(s.currentTimeStr, remainingStr(s.duration, s.currentTime));
+		volumeSlider.setValue(s.volume);
+		currentLrcIndex = s.currentLrcIndex;
+		renderLyricsUI(s.lyrics as LyricLine[], s.lyrics.length > 0 ? "loaded" : "none");
 	}
 
-	bindPressFeedback(root);
+	bindMediaButtonBounce(root);
 
 	if (mgr.getState().initialized) syncAll();
 }

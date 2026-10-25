@@ -280,40 +280,12 @@
 	}
 
 	.bp-transport {
-		gap: 22px;
+		gap: 10px;
 	}
 
 	.bp-btn {
-		width: 40px;
-		height: 40px;
-		font-size: 20px;
-	}
-
-	.bp-core {
-		gap: 20px;
-	}
-
-	.bp-play {
-		width: 48px;
-		height: 48px;
-		font-size: 24px;
-	}
-
-	.bp-volume {
-		display: none;
-	}
-
-	.bp-lyrics {
-		min-height: 0;
-		font-size: 19px;
-	}
-}
-
-/* ── 窄屏（≤380px）：按钮收紧，保证 5+1 键完整入列 ────────── */
-@media (max-width: 380px) {
-	.bp-btn {
-		width: 34px;
-		height: 34px;
+		width: 36px;
+		height: 36px;
 		font-size: 19px;
 	}
 
@@ -325,6 +297,15 @@
 		width: 44px;
 		height: 44px;
 		font-size: 22px;
+	}
+
+	.bp-volume {
+		display: none;
+	}
+
+	.bp-lyrics {
+		min-height: 0;
+		font-size: 19px;
 	}
 }
 

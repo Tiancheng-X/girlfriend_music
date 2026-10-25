@@ -46,6 +46,8 @@ declare global {
 			playNext: () => void;
 			playPrev: () => void;
 			cyclePlayMode: () => void;
+			/** 设置页直接指定播放模式（0 列表 / 1 单曲 / 2 随机），并写入设置持久化 */
+			setPlayMode: (mode: number) => void;
 			setVolume: (val: number) => void;
 			toggleMute: () => void;
 			seek: (percent: number) => void;

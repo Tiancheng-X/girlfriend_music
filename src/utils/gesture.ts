@@ -2,6 +2,7 @@
 // 弹簧参数与投影公式来自研究票据 02（.scratch/apple-ui-rebuild/research/02-motion.md）：
 // 速度交接必须用物理参数弹簧（stiffness/damping），bounce/duration 弹簧会整体丢弃 velocity。
 import { animate, motionValue, type MotionValue } from "motion";
+import { loadSettings } from "./settings";
 
 export type SpringParams = { stiffness: number; damping: number };
 
@@ -11,6 +12,8 @@ export const SPRING_GESTURE: SpringParams = { stiffness: 440, damping: 34 };
 export const SPRING_REPOSITION: SpringParams = { stiffness: 250, damping: 31 };
 
 export function prefersReducedMotion(): boolean {
+	// 设置页的手动覆盖优先于系统偏好
+	if (loadSettings().motionReduced === true) return true;
 	return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 

@@ -283,9 +283,20 @@
 		gap: 22px;
 	}
 
+	.bp-btn {
+		width: 40px;
+		height: 40px;
+		font-size: 20px;
+	}
+
+	.bp-core {
+		gap: 20px;
+	}
+
 	.bp-play {
-		width: 52px;
-		height: 52px;
+		width: 48px;
+		height: 48px;
+		font-size: 24px;
 	}
 
 	.bp-volume {

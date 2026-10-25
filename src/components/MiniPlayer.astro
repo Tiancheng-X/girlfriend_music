@@ -90,6 +90,84 @@ import "@/styles/player.css";
 	</div>
 </section>
 
+<!-- 设置 sheet：下拖或收起按钮关闭，分组表单即时生效 -->
+<div class="np-scrim" data-settings-scrim aria-hidden="true"></div>
+<section class="np-sheet" data-settings-sheet role="dialog" aria-modal="true" aria-label={t("settingsTitle")} data-closed>
+	<div class="np-grab" aria-hidden="true"><span></span></div>
+	<header class="np-head">
+		<span class="np-cap">{t("settingsTitle")}</span>
+		<button class="np-close" type="button" data-settings-close aria-label={t("npCollapse")}>
+			<Icon name="mdi:chevron-down" />
+		</button>
+	</header>
+	<div class="np-body">
+		<section class="set-group">
+			<h3 class="set-group-title">{t("setGroupPlayback")}</h3>
+			<div class="set-row">
+				<div class="set-label">
+					{t("setPlayModeLabel")}
+					<span class="set-desc">{t("setPlayModeDesc")}</span>
+				</div>
+				<div class="set-segmented" role="radiogroup" aria-label={t("setPlayModeLabel")} data-set-playmode>
+					<button class="set-seg" type="button" role="radio" data-value="0">{t("playModeList")}</button>
+					<button class="set-seg" type="button" role="radio" data-value="1">{t("playModeSingle")}</button>
+					<button class="set-seg" type="button" role="radio" data-value="2">{t("playModeShuffle")}</button>
+				</div>
+			</div>
+		</section>
+
+		<section class="set-group">
+			<h3 class="set-group-title">{t("setGroupDisplay")}</h3>
+			<div class="set-row">
+				<div class="set-label">{t("setLyricScaleLabel")}</div>
+				<div class="set-segmented" role="radiogroup" aria-label={t("setLyricScaleLabel")} data-set-lyricscale>
+					<button class="set-seg" type="button" role="radio" data-value="0.85">{t("setLyricSmall")}</button>
+					<button class="set-seg" type="button" role="radio" data-value="1">{t("setLyricStandard")}</button>
+					<button class="set-seg" type="button" role="radio" data-value="1.2">{t("setLyricLarge")}</button>
+				</div>
+			</div>
+			<div class="set-row">
+				<div class="set-label">
+					{t("setBgLabel")}
+					<span class="set-desc">{t("setBgDesc")}</span>
+				</div>
+				<button class="set-switch" type="button" role="switch" aria-checked="true" data-set-bgenabled>
+					<span class="set-knob"></span>
+				</button>
+			</div>
+			<div class="set-row">
+				<div class="set-label">
+					{t("setMotionLabel")}
+					<span class="set-desc">{t("setMotionDesc")}</span>
+				</div>
+				<button class="set-switch" type="button" role="switch" aria-checked="false" data-set-motionreduced>
+					<span class="set-knob"></span>
+				</button>
+			</div>
+		</section>
+
+		<section class="set-group">
+			<h3 class="set-group-title">{t("setGroupData")}</h3>
+			<div class="set-row">
+				<div class="set-label">
+					{t("setClearLabel")}
+					<span class="set-desc">{t("setClearDesc")}</span>
+				</div>
+				<button class="set-danger" type="button" data-set-clear>{t("setClearAction")}</button>
+			</div>
+		</section>
+
+		<section class="set-group">
+			<h3 class="set-group-title">{t("setGroupAbout")}</h3>
+			<p class="set-about">
+				{t("setAboutLine1")}
+				<br />
+				{t("setAboutLine2")}
+			</p>
+		</section>
+	</div>
+</section>
+
 <!-- 歌单条目结构：控制器按批克隆填充 -->
 <template data-playlist-template>
 	<button class="np-item" type="button" role="option">
@@ -104,11 +182,17 @@ import "@/styles/player.css";
 
 <script>
 	import { setupSheet } from "@/utils/sheet-controller";
+	import { setupSettingsSheet } from "@/utils/settings-controller";
 
 	// 单页站点，模块脚本只执行一次；data 标记兜底防重复挂载
 	const sheet = document.querySelector<HTMLElement>("[data-np-sheet]");
 	if (sheet && sheet.dataset.ready !== "true") {
 		sheet.dataset.ready = "true";
 		setupSheet();
+	}
+	const settingsSheet = document.querySelector<HTMLElement>("[data-settings-sheet]");
+	if (settingsSheet && settingsSheet.dataset.ready !== "true") {
+		settingsSheet.dataset.ready = "true";
+		setupSettingsSheet();
 	}
 </script>

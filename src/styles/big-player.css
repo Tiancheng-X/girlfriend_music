@@ -309,6 +309,32 @@
 	}
 }
 
+/* ── 窄屏（≤380px）：按钮收紧，保证 5+1 键完整入列 ────────── */
+@media (max-width: 380px) {
+	.bp-btn {
+		width: 34px;
+		height: 34px;
+		font-size: 19px;
+	}
+
+	.bp-core {
+		gap: 14px;
+	}
+
+	.bp-play {
+		width: 44px;
+		height: 44px;
+		font-size: 22px;
+	}
+}
+
+/* ── 极窄（≤350px）：播放模式收进设置页，传输行只留五键 ───── */
+@media (max-width: 350px) {
+	.bp-btn-mode {
+		display: none;
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.bp-btn,
 	.bp-play {

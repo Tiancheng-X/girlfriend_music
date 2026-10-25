@@ -124,13 +124,13 @@
 .bp-transport {
 	display: flex;
 	align-items: center;
-	gap: 28px;
+	gap: 24px;
 }
 
 .bp-core {
 	display: flex;
 	align-items: center;
-	gap: 28px;
+	gap: 24px;
 }
 
 .bp-btn {

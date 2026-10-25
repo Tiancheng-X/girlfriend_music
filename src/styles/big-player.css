@@ -213,7 +213,7 @@
 	/* 上下边缘渐隐，歌词像从流体里浮出来 */
 	-webkit-mask-image: linear-gradient(transparent, #000 7%, #000 93%, transparent);
 	mask-image: linear-gradient(transparent, #000 7%, #000 93%, transparent);
-	font-size: clamp(17px, 1.6vw, 22px);
+	font-size: calc(clamp(17px, 1.6vw, 22px) * var(--bp-lyrics-scale, 1));
 }
 
 .bp-lyrics-list {
@@ -305,7 +305,7 @@
 
 	.bp-lyrics {
 		min-height: 0;
-		font-size: 19px;
+		font-size: calc(19px * var(--bp-lyrics-scale, 1));
 	}
 }
 

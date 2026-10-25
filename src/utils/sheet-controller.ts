@@ -238,7 +238,7 @@ export function setupSheet(): void {
 		(event) => {
 			if (event.pointerType === "mouse" && event.button !== 0) return;
 			const target = event.target;
-			if (target instanceof Element && target.closest("button, input, [data-playlist-list]")) return;
+			if (target instanceof Element && target.closest("button, input, [data-playlist-list], [data-np-progress-slider], [data-np-volume-slider]")) return;
 			event.preventDefault();
 			sheet.setPointerCapture(event.pointerId);
 			sheetDrag = { pointerId: event.pointerId, startY: event.clientY, originY: y.get() };

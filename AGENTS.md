@@ -53,6 +53,11 @@ tokens 在 `layouts/Base.astro` 的 `:root`。
 7. **设置键 `amll-settings-v1` 是引擎与设置面板的双边契约**：结构改动要同步
    MusicManager 的内联读取与 `settings.ts`。
 8. 封面占位 fallback 默认 `display:none`、`.is-empty` 才显示——别改回常显。
+9. **sheet 的拖拽处理器会抢占指针捕获**：`pointerdown` 冒泡到 sheet 后 `sheet.setPointerCapture`
+   会覆盖子控件自己的捕获，子滑杆从此收不到 move/up。凡在 sheet 内新增可拖拽控件，
+   必须把它的宿主选择器加进 sheet 拖拽的排除列表（`closest("…")`）。
+10. **设置项的 CSS 变量必须真有消费者**：`applySettings` 写的每个根变量，都要在
+    样式表里以 `var()` 引用并写进组件的 font-size/颜色——只写不读是静默无效（歌词字号曾踩）。
 
 ## 设置键结构（`amll-settings-v1`）
 

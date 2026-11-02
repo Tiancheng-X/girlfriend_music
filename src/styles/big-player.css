@@ -44,7 +44,12 @@
 	overflow: hidden;
 	flex: none;
 	background: var(--am-surface);
-	box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+	/* 深色流体背景上不用大投影：80px 模糊 + 30px 偏移要往外铺约 130px，而 400px 宽的
+	   .bp-side 里封面左右只剩 60px 余量，阴影被 overflow: hidden 硬切出一道台阶
+	   （实测 x=488 处阴影强度从 3.7 直接掉到 1.8）。轮廓改由 1px 亮边定义——
+	   彩色渐变背景上，边缘对比比一团暗雾更适合，也彻底消除裁切。 */
+	outline: 1px solid rgba(255, 255, 255, 0.1);
+	outline-offset: -1px;
 }
 
 .bp-cover img {

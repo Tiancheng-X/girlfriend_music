@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "girlfriend-music",
+	"name": "ovomusic",
 	"compatibility_date": "2026-10-24",
 	"assets": {
 		"directory": "./dist",

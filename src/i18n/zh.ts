@@ -2,7 +2,7 @@
 // key 清单由移植代码里的 i18n(I18nKey.*) 调用点 grep 得出，取值沿用 my-blog 的 zh_CN 文案。
 
 export const ZH = {
-	pageTitle: "宝宝的歌单",
+	pageTitle: "OvO Music",
 	music: "音乐",
 	musicNoPlaying: "暂未播放",
 	musicLyrics: "歌词",
@@ -47,7 +47,7 @@ export const ZH = {
 	setClearDesc: "设置、音量与歌词缓存",
 	setClearAction: "清除",
 	setClearConfirm: "确认清除？",
-	setAboutLine1: "宝宝的歌单 · v0.1.0",
+	setAboutLine1: "OvO Music",
 	setAboutLine2: "界面参照 Apple Music 与 AMLL 开源项目",
 } as const;
 

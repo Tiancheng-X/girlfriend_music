@@ -52,7 +52,7 @@ export const musicPlayerConfig: MusicPlayerConfig = {
 		// song=单曲, playlist=歌单, album=专辑, search=搜索
 		type: "playlist",
 		// 歌单 ID
-		id: "8759683642",
+		id: "5056072009",
 		auth: "",
 		// 备用接口：主接口失败时按顺序重试
 		fallbackApis: [

@@ -1,4 +1,4 @@
-# OvO Music
+# girlfriend_music
 
 只有「听歌」一件事的极简 Astro 站点。界面为 Apple Music 风沉浸式播放页：
 AMLL（applemusic-like-lyrics）流体渐变背景铺满全页、大播放器 = 封面控制 +

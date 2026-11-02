@@ -1,4 +1,4 @@
-# AGENTS.md — OvO Music
+# AGENTS.md — girlfriend_music
 
 > 给任何要改这个仓库的 Agent / 人：先读完本文再动手。域词汇表见 `CONTEXT.md`，
 > 用户侧说明见 `README.md`，历史决策见 `.scratch/` 下的三张 wayfinder 地图。
@@ -7,7 +7,7 @@
 
 单页静态音乐站（Astro 7 + TypeScript，零框架）：Apple Music 风沉浸式播放页 +
 底部 mini-player + 队列 sheet + 设置面板。歌单来自 Meting API（网易云歌单
-`5056072009`）。部署目标 Cloudflare Workers（`wrangler.jsonc` 已就绪）。
+`8759683642`）。部署目标 Cloudflare Workers（`wrangler.jsonc` 已就绪）。
 
 ## 硬性约束
 

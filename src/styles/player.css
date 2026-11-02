@@ -45,6 +45,26 @@ html.amll-bg-live .np-ambient {
 		radial-gradient(55% 45% at 78% 85%, rgba(147, 51, 234, 0.22), transparent 70%);
 }
 
+/* ── 封面交叉淡入（大播放器 / mini / 队列缩略图共用，逻辑见 cover-fade.ts） ──
+   淡入类只挂在会变的那张图上，不污染 .bp-cover img / .mini-cover img 基础选择器；
+   覆盖层是旧图的一层静态拷贝，铺满容器、不吃指针事件。 */
+.cover-fade {
+	position: relative;
+	z-index: 1;
+	transition: opacity 240ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.cover-fade-layer {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	pointer-events: none;
+	border-radius: inherit;
+}
+
 /* ── AMLL BouncingSlider（进度/音量共用，官方样式复刻） ───── */
 [data-progress-slider],
 [data-volume-slider],
@@ -109,6 +129,7 @@ html.amll-bg-live .np-ambient {
 }
 
 .mini-cover {
+	position: relative; /* 交叉淡入覆盖层（.cover-fade-layer）的定位基准 */
 	width: 44px;
 	height: 44px;
 	border-radius: 50%;
@@ -681,4 +702,55 @@ html.amll-bg-live .np-ambient {
 	.np-skeleton-row {
 		animation: none;
 	}
+
+	.cover-fade {
+		transition: none;
+	}
+}
+
+/* 设置页「减弱动效」：applySettings 在 html 上加 .force-reduced-motion，
+   必须与上面的系统偏好等价，否则手动开关对所有 CSS 动画/过渡都无声无效。 */
+.force-reduced-motion .mini-eq i {
+	animation: none;
+	height: 60%;
+}
+
+.force-reduced-motion .np-ambient {
+	transition: none;
+}
+
+.force-reduced-motion .np-skeleton-row {
+	animation: none;
+}
+
+.force-reduced-motion .cover-fade {
+	transition: none;
+}
+
+/* 其余现存动画/过渡（grep animation: / transition: 全量核对后补齐），
+   系统偏好块保持原样：不改既有 reduce 行为，只让手动开关覆盖到同样彻底。 */
+.force-reduced-motion .mini-eq {
+	transition: none;
+}
+
+.force-reduced-motion .np-btn {
+	transition: none;
+}
+
+.force-reduced-motion .np-btn > * {
+	transition: none;
+}
+
+.force-reduced-motion .np-btn.is-bouncing > * {
+	animation: none;
+}
+
+.force-reduced-motion .set-seg,
+.force-reduced-motion .set-switch,
+.force-reduced-motion .set-danger {
+	transition: none;
+}
+
+.force-reduced-motion .set-switch .set-knob {
+	transition: none;
 }

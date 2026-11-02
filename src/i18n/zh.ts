@@ -2,6 +2,7 @@
 // key 清单由移植代码里的 i18n(I18nKey.*) 调用点 grep 得出，取值沿用 my-blog 的 zh_CN 文案。
 
 export const ZH = {
+	pageTitle: "宝宝的歌单",
 	music: "音乐",
 	musicNoPlaying: "暂未播放",
 	musicLyrics: "歌词",
@@ -25,6 +26,7 @@ export const ZH = {
 	npNowPlaying: "正在播放",
 	npCollapse: "收起",
 	musicQueue: "播放队列",
+	miniPlayerLabel: "迷你播放器",
 	settingsTitle: "设置",
 	settingsOpen: "设置",
 	setGroupPlayback: "播放",

@@ -3,11 +3,12 @@
 // 流体渐变背景由 MiniPlayer 挂载的 AMLL canvas 提供，铺满全页。
 import Base from "@/layouts/Base.astro";
 import BigPlayer from "@/components/BigPlayer.astro";
+import { t } from "@/i18n/zh";
 ---
 
-<Base title="宝宝的歌单">
+<Base title={t("pageTitle")}>
 	<main class="page">
-		<h1 class="page__title">宝宝的歌单</h1>
+		<h1 class="page__title">{t("pageTitle")}</h1>
 
 		<BigPlayer />
 	</main>

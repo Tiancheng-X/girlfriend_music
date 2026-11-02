@@ -9,6 +9,7 @@ import {
 	bindMediaButtonBounce,
 	createBouncingSlider,
 } from "./bouncing-slider";
+import { showCover } from "./cover-fade";
 import {
 	clampRubberband,
 	createVelocityTracker,
@@ -348,10 +349,13 @@ export function setupSheet(): void {
 		setAmllBackgroundCover(track.pic || undefined);
 		if (miniEls.name) miniEls.name.textContent = track.name;
 		if (miniEls.artist) miniEls.artist.textContent = track.artist;
-		if (miniEls.img) {
-			miniEls.img.src = track.pic || "";
-			miniEls.img.alt = `${track.name} - ${track.artist}`;
-		}
+		// mini 封面同样走交叉淡入（旧图留底层）；容器可为空时函数内部自行降级
+		showCover({
+			container: miniEls.img?.parentElement ?? null,
+			img: miniEls.img,
+			url: track.pic,
+			alt: `${track.name} - ${track.artist}`,
+		});
 		updateAmbientFallback(track.pic || undefined);
 		updateProgressUI("0:00", "0:00");
 	}
@@ -371,8 +375,6 @@ export function setupSheet(): void {
 			const nameEl = clone.querySelector<HTMLElement>(".np-item-name");
 			const artistEl = clone.querySelector<HTMLElement>(".np-item-artist");
 			if (!item || !img || !indexEl || !nameEl || !artistEl) continue;
-			img.src = track.pic || "";
-			img.alt = "";
 			indexEl.textContent = String(idx + 1);
 			nameEl.textContent = track.name;
 			artistEl.textContent = track.artist;
@@ -386,6 +388,12 @@ export function setupSheet(): void {
 				{ signal },
 			);
 			list.appendChild(clone);
+			// 封面必须等这一行真的进了 DOM 再挂：模板带 loading="lazy"，游离的 img 没有
+			// 视口可评估（窗口不可见时更是永不加载），Firefox 对 decode() 还会直接 reject
+			// （mdn/content#38034），旧顺序曾让列表缩略图整片变空白。文字/监听器已在
+			// appendChild 之前填好，这里只把封面这步挪到入 DOM 之后。
+			// 列表缩略图每行只加载一次、没有旧图，传 null 容器走纯淡入
+			showCover({ container: null, img, url: track.pic, alt: "" });
 		}
 		renderedCount = actualEnd;
 	}

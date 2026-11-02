@@ -326,4 +326,38 @@
 		-webkit-mask-image: none;
 		mask-image: none;
 	}
+
+	.cover-fade {
+		transition: none;
+	}
+}
+
+/* 设置页「减弱动效」：applySettings 在 html 上加 .force-reduced-motion。
+   系统偏好之外必须有孪生选择器，否则手动开关对 CSS 动画/过渡静默无效。 */
+.force-reduced-motion .bp-btn,
+.force-reduced-motion .bp-play {
+	transition: none;
+}
+
+.force-reduced-motion .bp-lyrics {
+	-webkit-mask-image: none;
+	mask-image: none;
+}
+
+.force-reduced-motion .cover-fade {
+	transition: none;
+}
+
+/* 其余现存动画/过渡（grep animation: / transition: 全量核对后补齐），
+   系统偏好块保持原样：不改既有 reduce 行为，只让手动开关覆盖到同样彻底。 */
+.force-reduced-motion .bp-btn > * {
+	transition: none;
+}
+
+.force-reduced-motion .bp-btn.is-bouncing > * {
+	animation: none;
+}
+
+.force-reduced-motion .bp-lrc {
+	transition: none;
 }

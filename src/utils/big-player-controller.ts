@@ -3,6 +3,7 @@
 // 封面/曲名、进度条与音量（AMLL BouncingSlider）、播放模式、歌词面板、fm:* 事件消费。
 import { t } from "@/i18n/zh";
 import { bindMediaButtonBounce, createBouncingSlider } from "./bouncing-slider";
+import { showCover } from "./cover-fade";
 
 function formatTime(seconds: number): string {
 	if (!seconds || Number.isNaN(seconds)) return "0:00";
@@ -147,11 +148,15 @@ export function setupBigPlayer(): void {
 			els.artist.textContent = track.artist;
 			els.artist.title = track.artist;
 		}
-		if (els.coverImg) {
-			els.coverImg.src = track.pic || "";
-			els.coverImg.alt = `${track.name} - ${track.artist}`;
-			els.cover?.classList.toggle("is-empty", !track.pic);
-		}
+		// 封面：旧图留在底层做交叉淡入；弱动效时瞬时切换（见 cover-fade.ts）
+		showCover({
+			container: els.cover,
+			img: els.coverImg,
+			url: track.pic,
+			alt: `${track.name} - ${track.artist}`,
+			onDecodeFail: () => els.cover?.classList.add("is-empty"),
+		});
+		els.cover?.classList.toggle("is-empty", !track.pic);
 		updateProgressUI("0:00", "0:00");
 	}
 
